@@ -79,12 +79,51 @@ export function createAppTheme(direction: "ltr" | "rtl") {
       },
       MuiTableCell: {
         styleOverrides: {
+          root: {
+            textAlign: "start",
+          },
           head: {
             fontWeight: 700,
             color: "#64748b",
             textTransform: "uppercase",
             fontSize: "0.72rem",
             letterSpacing: "0.05em",
+            textAlign: "start",
+          },
+        },
+      },
+      MuiTable: {
+        styleOverrides: {
+          root: {
+            textAlign: "start",
+          },
+        },
+      },
+      MuiListItemButton: {
+        styleOverrides: {
+          root: {
+            textAlign: "start",
+          },
+        },
+      },
+      MuiListItem: {
+        styleOverrides: {
+          root: {
+            textAlign: "start",
+          },
+        },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: {
+            textAlign: "start",
+          },
+        },
+      },
+      MuiFormHelperText: {
+        styleOverrides: {
+          root: {
+            textAlign: "start",
           },
         },
       },
