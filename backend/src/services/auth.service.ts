@@ -10,7 +10,7 @@ import { RoleModel, SessionModel, TwoFactorModel, UserModel, type UserDoc } from
 import { AppError } from "../utils/errors";
 import { decryptSecret, encryptSecret, sha256 } from "../utils/crypto";
 import { generateBase32Secret, generateRecoveryCodes, verifyTotp } from "../utils/totp";
-import { removeUploadedFile, saveBase64Image } from "../utils/uploads";
+import { deleteImage } from "../utils/cloudflare-images";
 import { writeAudit } from "./audit.service";
 
 const SALT_ROUNDS = 12;
@@ -212,18 +212,17 @@ export async function changePassword(
   );
 }
 
-export async function uploadAvatar(userId: string, imageDataUrl: string): Promise<{ avatarUrl: string }> {
-  const avatarUrl = await saveBase64Image(imageDataUrl, "avatars", "avatar");
+export async function uploadAvatar(userId: string, avatarUrl: string): Promise<{ avatarUrl: string }> {
   const user = await UserModel.findById(userId);
   if (!user) {
-    await removeUploadedFile(avatarUrl, "avatars");
     throw new AppError(404, "user not found");
   }
-  if (user.avatarUrl) {
-    await removeUploadedFile(user.avatarUrl, "avatars");
-  }
+  const previousAvatar = user.avatarUrl;
   user.avatarUrl = avatarUrl;
   await user.save();
+  if (previousAvatar) {
+    await deleteImage(previousAvatar);
+  }
   return { avatarUrl: user.avatarUrl };
 }
 

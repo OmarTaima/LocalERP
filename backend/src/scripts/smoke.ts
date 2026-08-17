@@ -8,6 +8,10 @@ async function run(): Promise<void> {
   await mongod.waitUntilRunning();
   process.env.NODE_ENV = "test";
   process.env.MONGO_URI = mongod.getUri("erp");
+  // Smoke must never touch real Cloudflare: pin the config vars to empty
+  // so POST /upload/direct returns 503 instead of making API calls.
+  process.env.CLOUDFLARE_ACCOUNT_ID = "";
+  process.env.CLOUDFLARE_IMAGES_TOKEN = "";
 
   const { app, connectDb } = await import("../index");
   await connectDb();
@@ -29,7 +33,7 @@ async function run(): Promise<void> {
     console.log(`  ok: ${message}`);
   };
 
-  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  const demoImage = (id: string): string => `https://imagedelivery.net/demo/${id}/public`;
 
   await SuperAdminModel.create({
     email: "superadmin@smoke.com",
@@ -59,9 +63,9 @@ async function run(): Promise<void> {
   const adminCompanyLogo = await request(`/admin/companies/${companyId}/logo`, {
     method: "POST",
     headers: adminJsonHeaders,
-    body: JSON.stringify({ image: png }),
+    body: JSON.stringify({ logoUrl: demoImage("logo-1") }),
   });
-  expect(adminCompanyLogo.status === 200 && typeof adminCompanyLogo.body.logoUrl === "string" && (adminCompanyLogo.body.logoUrl as string).startsWith("/uploads/logos/"), "superadmin uploads company logo");
+  expect(adminCompanyLogo.status === 200 && typeof adminCompanyLogo.body.logoUrl === "string" && (adminCompanyLogo.body.logoUrl as string).startsWith("https://"), "superadmin uploads company logo");
 
   const companyListWithLogo = await request("/admin/companies", { headers: adminHeaders });
   expect((companyListWithLogo.body as { items: Array<{ logoUrl: string | null }> }).items[0].logoUrl === adminCompanyLogo.body.logoUrl, "GET /admin/companies includes logoUrl");
@@ -139,24 +143,24 @@ async function run(): Promise<void> {
   const companyLogo = await request("/company/logo", {
     method: "POST",
     headers: authHeaders,
-    body: JSON.stringify({ image: png }),
+    body: JSON.stringify({ logoUrl: demoImage("logo-2") }),
   });
-  expect(companyLogo.status === 200 && (companyLogo.body.logoUrl as string).startsWith("/uploads/logos/"), "company-scoped logo upload sets logoUrl");
+  expect(companyLogo.status === 200 && (companyLogo.body.logoUrl as string).startsWith("https://"), "company-scoped logo upload sets logoUrl");
 
   const avatarUser = await request("/users", {
     method: "POST",
     headers: authHeaders,
-    body: JSON.stringify({ name: "Avatar Tester", email: "avatar@acme.com", password: "SecurePass3", avatarBase64: png }),
+    body: JSON.stringify({ name: "Avatar Tester", email: "avatar@acme.com", password: "SecurePass3", avatarUrl: demoImage("avatar-1") }),
   });
-  expect(avatarUser.status === 201 && (avatarUser.body.avatarUrl as string).startsWith("/uploads/avatars/"), "company-scoped user create sets avatarUrl from avatarBase64");
+  expect(avatarUser.status === 201 && (avatarUser.body.avatarUrl as string).startsWith("https://"), "company-scoped user create sets avatarUrl");
   const avatarUserId = (avatarUser.body as { id: string }).id;
 
   const avatarUserPatch = await request(`/users/${avatarUserId}`, {
     method: "PATCH",
     headers: authHeaders,
-    body: JSON.stringify({ avatarBase64: png }),
+    body: JSON.stringify({ avatarUrl: demoImage("avatar-2") }),
   });
-  expect(avatarUserPatch.status === 200 && (avatarUserPatch.body.avatarUrl as string).startsWith("/uploads/avatars/"), "company-scoped user avatar replaced via PATCH");
+  expect(avatarUserPatch.status === 200 && (avatarUserPatch.body.avatarUrl as string).startsWith("https://"), "company-scoped user avatar replaced via PATCH");
 
   const adminCreatedUser = await request("/admin/users", {
     method: "POST",
@@ -188,17 +192,37 @@ async function run(): Promise<void> {
   const adminAvatarUser = await request("/admin/users", {
     method: "POST",
     headers: adminJsonHeaders,
-    body: JSON.stringify({ name: "Admin Avatar", email: "admin-avatar@acme.com", password: "SecurePass4", companyId, avatarBase64: png }),
+    body: JSON.stringify({ name: "Admin Avatar", email: "admin-avatar@acme.com", password: "SecurePass4", companyId, avatarUrl: demoImage("avatar-3") }),
   });
-  expect(adminAvatarUser.status === 201 && (adminAvatarUser.body.avatarUrl as string).startsWith("/uploads/avatars/"), "POST /admin/users sets avatarUrl from avatarBase64");
+  expect(adminAvatarUser.status === 201 && (adminAvatarUser.body.avatarUrl as string).startsWith("https://"), "POST /admin/users sets avatarUrl");
   const adminAvatarUserId = (adminAvatarUser.body as { id: string }).id;
 
   const adminAvatarPatch = await request(`/admin/users/${adminAvatarUserId}`, {
     method: "PATCH",
     headers: adminJsonHeaders,
-    body: JSON.stringify({ avatarBase64: png }),
+    body: JSON.stringify({ avatarUrl: demoImage("avatar-4") }),
   });
-  expect(adminAvatarPatch.status === 200 && (adminAvatarPatch.body.avatarUrl as string).startsWith("/uploads/avatars/"), "PATCH /admin/users/:id updates avatarUrl");
+  expect(adminAvatarPatch.status === 200 && (adminAvatarPatch.body.avatarUrl as string).startsWith("https://"), "PATCH /admin/users/:id updates avatarUrl");
+
+  const directUploadAnon = await request("/upload/direct", {
+    method: "POST",
+    body: JSON.stringify({ name: "demo.png", type: "image/png" }),
+  });
+  expect(directUploadAnon.status === 401, "POST /upload/direct rejects missing token");
+
+  const directUploadCompany = await request("/upload/direct", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({ name: "demo.png", type: "image/png" }),
+  });
+  expect(directUploadCompany.status === 503, "POST /upload/direct accepts company user token and 503s without Cloudflare config");
+
+  const directUploadAdmin = await request("/upload/direct", {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({ name: "demo.png", type: "image/png", folder: "logos" }),
+  });
+  expect(directUploadAdmin.status === 503, "POST /upload/direct accepts superadmin token and 503s without Cloudflare config");
 
   const adminUserDelete = await request(`/admin/users/${adminUserId}`, { method: "DELETE", headers: adminHeaders });
   expect(adminUserDelete.status === 200, "DELETE /admin/users/:id soft-deactivates user");
@@ -302,16 +326,16 @@ async function run(): Promise<void> {
     name: "Keyboard with photo",
     price: 59.99,
     cost: 30,
-    image: png,
+    image: demoImage("product-1"),
   });
-  expect(productWithImage.status === 201 && ((productWithImage.body as { images: string[] }).images[0] ?? "").startsWith("/uploads/product/"), "product photo upload sets images[0]");
+  expect(productWithImage.status === 201 && ((productWithImage.body as { images: string[] }).images[0] ?? "").startsWith("https://"), "product photo upload sets images[0]");
 
   const productPhotoPatch = await request(`/products/${productId}`, {
     method: "PATCH",
     headers: jsonHeaders,
-    body: JSON.stringify({ image: png }),
+    body: JSON.stringify({ image: demoImage("product-2") }),
   });
-  expect(productPhotoPatch.status === 200 && ((productPhotoPatch.body as { images: string[] }).images[0] ?? "").startsWith("/uploads/product/"), "product photo replaced via PATCH");
+  expect(productPhotoPatch.status === 200 && ((productPhotoPatch.body as { images: string[] }).images[0] ?? "").startsWith("https://"), "product photo replaced via PATCH");
 
   const duplicateProduct = await post("/products", { sku: "SKU-1001", name: "Duplicate", price: 1, cost: 1 });
   expect(duplicateProduct.status === 409, "duplicate sku rejected with 409");

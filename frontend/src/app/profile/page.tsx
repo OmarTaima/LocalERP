@@ -61,10 +61,10 @@ export default function ProfilePage() {
     );
   }
 
-  const handleAvatarPicked = async (dataUrl: string) => {
+  const handleAvatarPicked = async (url: string) => {
     setUploading(true);
     try {
-      const res = await api<{ avatarUrl: string }>("/auth/avatar", { method: "POST", body: { image: dataUrl } });
+      const res = await api<{ avatarUrl: string }>("/auth/avatar", { method: "POST", body: { avatarUrl: url } });
       setUser({ ...user, avatarUrl: res.avatarUrl });
       toastSuccess("Avatar updated");
     } catch (err) {
@@ -128,7 +128,7 @@ export default function ProfilePage() {
             <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 0.5 }}>
               <AvatarUpload
                 value={assetUrl(user.avatarUrl) ?? null}
-                onChange={(dataUrl) => { if (dataUrl) void handleAvatarPicked(dataUrl); }}
+                onChange={(url) => { if (url) void handleAvatarPicked(url); }}
                 disabled={uploading}
                 size={96}
                 placeholderIcon={<Typography sx={{ fontSize: 28, fontWeight: 700 }}>{initials}</Typography>}

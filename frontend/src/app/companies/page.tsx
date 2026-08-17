@@ -161,13 +161,13 @@ export default function CompaniesPage() {
     }
   };
 
-  const handleUploadLogo = async (image: string) => {
+  const handleUploadLogo = async (logoUrl: string) => {
     if (!editTarget) return;
     setLogoUploading(true);
     try {
       const res = await api<{ logoUrl: string }>(`/admin/companies/${editTarget.id}/logo`, {
         method: "POST",
-        body: { image },
+        body: { logoUrl },
       });
       setEditTarget({ ...editTarget, logoUrl: res.logoUrl });
       toastSuccess("Logo updated");
@@ -330,8 +330,9 @@ export default function CompaniesPage() {
             <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a", mb: 1 }}>Logo</Typography>
             <AvatarUpload
               value={assetUrl(editTarget?.logoUrl) ?? null}
-              onChange={(dataUrl) => { if (dataUrl) void handleUploadLogo(dataUrl); }}
+              onChange={(url) => { if (url) void handleUploadLogo(url); }}
               disabled={logoUploading}
+              folder="logos"
             />
           </Box>
         </Stack>

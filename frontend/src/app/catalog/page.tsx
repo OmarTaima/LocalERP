@@ -177,6 +177,7 @@ function ProductsTab() {
           onChange={setProductImage}
           size={72}
           shape="square"
+          folder="products"
           placeholderIcon={<Inventory2OutlinedIcon sx={{ fontSize: 34 }} />}
         />
       </FormDialog>
@@ -225,6 +226,7 @@ function ProductsTab() {
           onChange={setEditImage}
           size={72}
           shape="square"
+          folder="products"
           placeholderIcon={<Inventory2OutlinedIcon sx={{ fontSize: 34 }} />}
         />
       </FormDialog>

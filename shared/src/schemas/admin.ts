@@ -33,7 +33,7 @@ export const adminCreateUserSchema = Joi.object({
   password: Joi.string().min(8).required(),
   companyId: Joi.string().min(1).required(),
   roleId: Joi.string().min(1).optional(),
-  avatarBase64: Joi.string().optional(),
+  avatarUrl: Joi.string().uri({ scheme: ["https"] }).allow(null).optional(),
 });
 
 export const adminUpdateUserSchema = Joi.object({
@@ -41,7 +41,7 @@ export const adminUpdateUserSchema = Joi.object({
   roleId: Joi.string().min(1).optional(),
   companyId: Joi.string().min(1).optional(),
   isActive: Joi.boolean().optional(),
-  avatarBase64: Joi.string().optional(),
+  avatarUrl: Joi.string().uri({ scheme: ["https"] }).allow(null).optional(),
 }).min(1);
 
 export const adminUpdateRoleSchema = Joi.object({

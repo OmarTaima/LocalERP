@@ -20,7 +20,7 @@ export const userCreateSchema = Joi.object({
   name: Joi.string().min(2).max(80).required(),
   password: Joi.string().min(8).required(),
   roleId: Joi.string().min(1).optional(),
-  avatarBase64: Joi.string().optional(),
+  avatarUrl: Joi.string().uri({ scheme: ["https"] }).allow(null).optional(),
 });
 
 export const roleSchema = Joi.object({

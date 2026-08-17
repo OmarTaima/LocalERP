@@ -11,7 +11,7 @@ import { AppError } from "../utils/errors";
 import { RoleModel, CompanyModel, UserModel } from "../models";
 import bcrypt from "bcryptjs";
 import { writeAudit } from "../services/audit.service";
-import { removeUploadedFile, saveBase64Image } from "../utils/uploads";
+import { deleteImage } from "../utils/cloudflare-images";
 
 export const userRouter = Router();
 
@@ -64,7 +64,7 @@ userRouter.post(
       passwordHash: await bcrypt.hash(req.body.password, 12),
       name: req.body.name,
       roleId: role._id,
-      avatarUrl: req.body.avatarBase64 ? await saveBase64Image(req.body.avatarBase64, "avatars", "avatar") : null,
+      avatarUrl: req.body.avatarUrl ?? null,
       isActive: true,
     });
     await writeAudit({
@@ -97,12 +97,13 @@ userRouter.patch(
       if (!role) throw new AppError(400, "role does not exist in this company");
       updates.roleId = role._id;
     }
-    if (typeof req.body.avatarBase64 === "string") {
-      const avatarUrl = await saveBase64Image(req.body.avatarBase64, "avatars", "avatar");
-      if (user.avatarUrl) {
-        await removeUploadedFile(user.avatarUrl, "avatars");
+    if (req.body.avatarUrl !== undefined) {
+      const previousAvatar = user.avatarUrl;
+      user.avatarUrl = req.body.avatarUrl;
+      if (previousAvatar) {
+        await deleteImage(previousAvatar);
       }
-      updates.avatarUrl = avatarUrl;
+      updates.avatarUrl = user.avatarUrl;
     }
     Object.assign(user, updates);
     await user.save();

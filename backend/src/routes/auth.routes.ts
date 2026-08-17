@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  avatarUploadSchema,
   changePasswordSchema,
   loginSchema,
   refreshSchema,
@@ -11,6 +12,7 @@ import { company } from "../middleware/company";
 import { rbac } from "../middleware/rbac";
 import { validate } from "../middleware/validate";
 import { asyncHandler } from "../utils/async-handler";
+import { AppError } from "../utils/errors";
 import {
   changePassword,
   currentUser,
@@ -21,7 +23,6 @@ import {
   uploadAvatar,
   verifyTwoFactor,
 } from "../services/auth.service";
-import { AppError } from "../utils/errors";
 
 export const authRouter = Router();
 
@@ -49,11 +50,8 @@ authRouter.patch("/password", auth, company, rbac("profile:write"), validate(cha
   res.json({ ok: true });
 }));
 
-authRouter.post("/avatar", auth, company, rbac("profile:write"), asyncHandler(async (req, res) => {
-  if (typeof req.body.image !== "string") {
-    throw new AppError(400, "image is required");
-  }
-  res.json(await uploadAvatar(req.userId, req.body.image));
+authRouter.post("/avatar", auth, company, rbac("profile:write"), validate(avatarUploadSchema), asyncHandler(async (req, res) => {
+  res.json(await uploadAvatar(req.userId, req.body.avatarUrl));
 }));
 
 authRouter.post("/2fa/setup", auth, company, rbac("profile:write"), validate(totpSetupSchema), asyncHandler(async (req, res) => {

@@ -19,10 +19,10 @@ Auth: `Authorization: Bearer <jwt>` except public routes. Permission codes shown
 | POST | `/auth/logout` | auth | revokes current session |
 | GET | `/auth/me` | auth | current user + permissions |
 | PATCH | `/auth/password` | `profile:write` | change password |
-| POST | `/auth/avatar` | `profile:write` | upload avatar (base64 image) → `{ avatarUrl }` |
+| POST | `/auth/avatar` | `profile:write` | set avatar photo → `{ avatarUrl }` (body `{ avatarUrl: https }`, uploaded via `/upload/direct`) |
 | GET | `/users` | `users:read` | list users (search, paginate) |
-| POST | `/users` | `users:create` | create user (`avatarBase64?` sets avatar) |
-| PATCH | `/users/:id` | `users:write` | update user (name, role, isActive, `avatarBase64?`) |
+| POST | `/users` | `users:create` | create user (`avatarUrl?` https URL sets avatar) |
+| PATCH | `/users/:id` | `users:write` | update user (name, role, isActive, `avatarUrl?`) |
 | DELETE | `/users/:id` | `users:delete` | soft-deactivate user |
 | GET | `/roles` | `roles:read` | list roles |
 | POST | `/roles` | `roles:create` | create role `{ name, permissions[] }` |
@@ -30,9 +30,9 @@ Auth: `Authorization: Bearer <jwt>` except public routes. Permission codes shown
 | DELETE | `/roles/:id` | `roles:delete` | delete role (system roles rejected) |
 | GET | `/company/settings` | `companies:read` | company settings + display name |
 | PATCH | `/company/settings` | `companies:write` | update `name` and/or settings (`currency`, `taxRate`, `timezone`) — at least one field required |
-| POST | `/company/logo` | `companies:write` | upload company logo (base64 image) → `{ logoUrl }` |
+| POST | `/company/logo` | `companies:write` | set company logo → `{ logoUrl }` (body `{ logoUrl: https }`) |
 
-> Image uploads (avatar, logo, product photo): body `{ image: string }` — a `data:image/png|jpeg|webp;base64,...` data URL, decoded size 1 byte–1.5 MB. Files are written under `env.UPLOAD_DIR` and served at `/uploads/<prefix>/...`. Errors: `image is required`, `<label> must be a base64 png, jpeg or webp image`, `<label> must be between 1 byte and 1.5 MB`.
+> Image uploads (avatar, logo, product photo): the browser uploads the file directly to Cloudflare Images and stores the resulting URL. Flow: `POST /upload/direct` with `{ name, type, folder? }` (any authenticated user incl. superadmin) → `{ uploadURL, publicUrl }`; the client PUTs the raw file bytes to `uploadURL` (10 min TTL); then save `publicUrl` via the endpoint above (avatar/logo) or as `image` on product create/update. Requires `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_IMAGES_TOKEN` on the backend; returns 503 `{ error }` when unconfigured.
 
 ### Platform admin (super-admin, separate JWT — no `companyId` claim)
 
@@ -44,12 +44,12 @@ Auth: `Authorization: Bearer <jwt>` except public routes. Permission codes shown
 | POST | `/admin/companies` | `requireSuperAdmin` | `{ name, slug, plan?, settings? }` → creates Company + system roles (admin + presets) in one transaction; no user is created |
 | PATCH | `/admin/companies/:id` | `requireSuperAdmin` | update `name`, `plan` (resets limits), `isActive`, `limits` |
 | DELETE | `/admin/companies/:id` | `requireSuperAdmin` | soft-deactivate (`isActive=false`), idempotent, 404 if missing → `{ ok: true }` |
-| POST | `/admin/companies/:id/logo` | `requireSuperAdmin` | upload company logo (base64 image) → `{ logoUrl }`; 404 if company missing |
+| POST | `/admin/companies/:id/logo` | `requireSuperAdmin` | set company logo (body `{ logoUrl: https }`) → `{ logoUrl }`; 404 if company missing |
 | GET | `/admin/companies/:id/roles` | `requireSuperAdmin` | list the company's roles as `[{ id, name, permissions, isSystem }]` (system roles marked `isSystem: true`) — lets the console discover a role `id` to pass as `roleId` when creating the company's first admin user |
-| POST | `/admin/companies/:id/users` | `requireSuperAdmin` | `{ name, email, password, roleId?, avatarBase64? }` → creates a user inside the company (enforces `limits.maxUsers`, email uniqueness; defaults role to the company `user` preset) |
+| POST | `/admin/companies/:id/users` | `requireSuperAdmin` | `{ name, email, password, roleId?, avatarUrl? }` → creates a user inside the company (enforces `limits.maxUsers`, email uniqueness; defaults role to the company `user` preset) |
 | GET | `/admin/users?page&pageSize&search&companyId` | `requireSuperAdmin` | paginated list of ALL users across companies → `{ items, total, page, pageSize }`; each item is the user serialization + `companyName` + `roleName` (batch-resolved) |
-| POST | `/admin/users` | `requireSuperAdmin` | `{ name, email, password, companyId, roleId?, avatarBase64? }` → creates a user in any company (company 404 if missing, role 400 if not in company, 409 on plan `maxUsers` limit or duplicate email, bcrypt 12; defaults role to the company `user` preset) |
-| PATCH | `/admin/users/:id` | `requireSuperAdmin` | `{ name?, roleId?, companyId?, isActive?, avatarBase64? }` → update; moving company re-validates limits and that the role belongs to the new company |
+| POST | `/admin/users` | `requireSuperAdmin` | `{ name, email, password, companyId, roleId?, avatarUrl? }` → creates a user in any company (company 404 if missing, role 400 if not in company, 409 on plan `maxUsers` limit or duplicate email, bcrypt 12; defaults role to the company `user` preset) |
+| PATCH | `/admin/users/:id` | `requireSuperAdmin` | `{ name?, roleId?, companyId?, isActive?, avatarUrl? }` → update; moving company re-validates limits and that the role belongs to the new company |
 | DELETE | `/admin/users/:id` | `requireSuperAdmin` | soft-deactivate (`isActive=false`), idempotent |
 | POST | `/admin/companies/:id/roles` | `requireSuperAdmin` | `{ name, permissions[] }` (role schema) → custom role; 409 duplicate name in company, 400 if name is a system preset name |
 | PATCH | `/admin/companies/:id/roles/:roleId` | `requireSuperAdmin` | `{ name?, permissions[]? }` → update; system role names locked (400), permissions editable; role must belong to the company (404) |
@@ -70,8 +70,8 @@ Auth: `Authorization: Bearer <jwt>` except public routes. Permission codes shown
 | GET/POST | `/categories` | `catalog:read/create` | tree list / create |
 | PATCH/DELETE | `/categories/:id` | `catalog:write/delete` | update / delete |
 | GET | `/products?search&category&status&page&sort` | `catalog:read` | paginated, filterable, searchable |
-| POST | `/products` | `catalog:create` | create (optional `image` base64 → saved photo becomes `images[0]`; `images[]` URLs still accepted) |
-| GET/PATCH | `/products/:id` | `catalog:read/write` | detail / update (optional `image` base64 replaces `images` with the uploaded photo) |
+| POST | `/products` | `catalog:create` | create (optional `image` https URL → saved photo becomes `images[0]`; `images[]` URLs still accepted) |
+| GET/PATCH | `/products/:id` | `catalog:read/write` | detail / update (optional `image` https URL replaces `images` with the uploaded photo) |
 | DELETE | `/products/:id` | `catalog:delete` | soft deactivate |
 | GET | `/products/:id/movements?from&to` | `catalog:read` | stock ledger for product |
 | POST | `/products/:id/stock-adjust` | `catalog:write` | adjustment → movement + inventory update |

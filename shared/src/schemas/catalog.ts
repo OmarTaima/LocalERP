@@ -19,8 +19,8 @@ export const productCreateSchema = Joi.object({
   cost: Joi.number().min(0).required(),
   barcode: Joi.string().max(64).default(""),
   lowStockThreshold: Joi.number().integer().min(0).default(5),
-  images: Joi.array().items(Joi.string().uri()).default([]),
-  image: Joi.string().optional(),
+  images: Joi.array().items(Joi.string().uri({ scheme: ["https"] })).default([]),
+  image: Joi.string().uri({ scheme: ["https"] }).optional(),
   variants: Joi.array().items(productVariantSchema).default([]),
 });
 
@@ -34,8 +34,8 @@ export const productUpdateSchema = Joi.object({
   cost: Joi.number().min(0).optional(),
   barcode: Joi.string().max(64).optional(),
   lowStockThreshold: Joi.number().integer().min(0).optional(),
-  images: Joi.array().items(Joi.string().uri()).optional(),
-  image: Joi.string().optional(),
+  images: Joi.array().items(Joi.string().uri({ scheme: ["https"] })).optional(),
+  image: Joi.string().uri({ scheme: ["https"] }).optional(),
   variants: Joi.array().items(productVariantSchema).optional(),
 });
 

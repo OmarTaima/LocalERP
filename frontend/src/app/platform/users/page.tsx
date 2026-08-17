@@ -61,7 +61,7 @@ export default function PlatformUsersPage() {
   const [dialogCompanyId, setDialogCompanyId] = useState("");
   const [dialogRoles, setDialogRoles] = useState<CompanyRole[]>([]);
   const [dialogRolesLoading, setDialogRolesLoading] = useState(false);
-  const [avatarDraft, setAvatarDraft] = useState<string | null>(null);
+  const [avatarDraftUrl, setAvatarDraftUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && user.kind !== "superadmin") {
@@ -144,7 +144,7 @@ export default function PlatformUsersPage() {
     setDialogCompanyId("");
     setDialogRoles([]);
     setDialogRolesLoading(false);
-    setAvatarDraft(null);
+    setAvatarDraftUrl(null);
     setDialogOpen(true);
   };
 
@@ -153,14 +153,14 @@ export default function PlatformUsersPage() {
     setEditingActive(row.isActive);
     setDialogCompanyId(row.companyId);
     fetchCompanyRoles(row.companyId);
-    setAvatarDraft(null);
+    setAvatarDraftUrl(null);
     setDialogOpen(true);
   };
 
   const closeDialog = () => {
     setDialogOpen(false);
     setEditing(null);
-    setAvatarDraft(null);
+    setAvatarDraftUrl(null);
   };
 
   const handleToggleActive = async (row: AdminUserRow) => {
@@ -198,7 +198,7 @@ export default function PlatformUsersPage() {
             companyId,
             ...(roleId ? { roleId } : {}),
             isActive: editingActive,
-            ...(avatarDraft ? { avatarBase64: avatarDraft } : {}),
+            ...(avatarDraftUrl ? { avatarUrl: avatarDraftUrl } : {}),
           },
         });
         toastSuccess("User updated");
@@ -215,7 +215,7 @@ export default function PlatformUsersPage() {
             password: values.password,
             companyId,
             ...(roleId ? { roleId } : {}),
-            ...(avatarDraft ? { avatarBase64: avatarDraft } : {}),
+            ...(avatarDraftUrl ? { avatarUrl: avatarDraftUrl } : {}),
           },
         });
         toastSuccess("User created");
@@ -364,7 +364,7 @@ export default function PlatformUsersPage() {
           submitLabel={editing ? "Save" : "Create user"}
         >
           <Stack spacing={2}>
-            <AvatarUpload value={avatarDraft ?? (assetUrl(editing?.avatarUrl) ?? null)} onChange={setAvatarDraft} />
+            <AvatarUpload value={avatarDraftUrl ?? (assetUrl(editing?.avatarUrl) ?? null)} onChange={setAvatarDraftUrl} />
             {editing && (
               <FormControlLabel
                 control={<Switch checked={editingActive} onChange={(e) => setEditingActive(e.target.checked)} />}

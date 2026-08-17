@@ -18,6 +18,7 @@ import { purchasingRouter } from "./routes/purchasing.routes";
 import { manufacturingRouter } from "./routes/manufacturing.routes";
 import { hrRouter } from "./routes/hr.routes";
 import { systemRouter } from "./routes/system.routes";
+import { uploadRouter } from "./routes/upload.routes";
 
 export const app = express();
 
@@ -36,6 +37,7 @@ app.use("/api/v1/roles", roleRouter);
 app.use("/api/v1/company", companyRouter);
 app.use("/api/v1/audit-logs", auditRouter);
 app.use("/api/v1/notifications", notificationRouter);
+app.use("/api/v1/upload", uploadRouter);
 app.use("/api/v1", catalogRouter);
 app.use("/api/v1", inventoryRouter);
 app.use("/api/v1", salesRouter);

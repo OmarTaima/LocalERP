@@ -12,7 +12,7 @@ import {
   type CategoryDoc,
 } from "../models";
 import { serializeCategory, serializeProduct } from "../utils/serializers";
-import { saveBase64Image } from "../utils/uploads";
+import { deleteImage } from "../utils/cloudflare-images";
 
 export function slugifyName(value: string): string {
   return value
@@ -182,7 +182,7 @@ export async function createProduct(companyId: string, userId: string, input: Pr
   }
   const duplicate = await ProductModel.exists({ companyId, sku: input.sku });
   if (duplicate) throw new AppError(409, "sku already exists");
-  const images = input.image ? [await saveBase64Image(input.image, "product")] : (input.images ?? []);
+  const images = input.image ? [input.image] : (input.images ?? []);
   const doc = await ProductModel.create({
     companyId,
     sku: input.sku,
@@ -235,7 +235,11 @@ export async function updateProduct(
   if (input.isActive !== undefined) doc.isActive = input.isActive;
   if (input.lowStockThreshold !== undefined) doc.lowStockThreshold = input.lowStockThreshold;
   if (input.image !== undefined) {
-    doc.images = [await saveBase64Image(input.image, "product")];
+    const previousImage = doc.images[0];
+    doc.images = [input.image];
+    if (previousImage && previousImage !== input.image) {
+      await deleteImage(previousImage);
+    }
   } else if (input.images !== undefined) {
     doc.images = input.images;
   }

@@ -7,6 +7,7 @@ import {
   adminUpdateRoleSchema,
   adminUpdateUserSchema,
   createCompanySchema,
+  logoUploadSchema,
   roleSchema,
   superadminLoginSchema,
   updateCompanySchema,
@@ -23,7 +24,7 @@ import { serializeCompany } from "../utils/serializers";
 import { asyncHandler } from "../utils/async-handler";
 import { AppError } from "../utils/errors";
 import { parsePagination } from "../utils/pagination";
-import { removeUploadedFile, saveBase64Image } from "../utils/uploads";
+import { deleteImage } from "../utils/cloudflare-images";
 
 export const adminRouter = Router();
 
@@ -147,22 +148,19 @@ adminRouter.patch(
 adminRouter.post(
   "/companies/:id/logo",
   requireSuperAdmin,
+  validate(logoUploadSchema),
   asyncHandler(async (req, res) => {
-    if (typeof req.body.image !== "string") {
-      throw new AppError(400, "image is required");
-    }
     const company = await CompanyModel.findById(req.params.id);
     if (!company) {
       throw new AppError(404, "company not found");
     }
     const previousLogo = company.logoUrl;
-    const logoUrl = await saveBase64Image(req.body.image, "logos");
-    if (previousLogo) {
-      await removeUploadedFile(previousLogo, "logos");
-    }
-    company.logoUrl = logoUrl;
+    company.logoUrl = req.body.logoUrl;
     await company.save();
-    res.json({ logoUrl });
+    if (previousLogo) {
+      await deleteImage(previousLogo);
+    }
+    res.json({ logoUrl: company.logoUrl });
   }),
 );
 
@@ -231,7 +229,7 @@ adminRouter.post(
       passwordHash: await bcrypt.hash(req.body.password, 12),
       name: req.body.name,
       roleId: role._id,
-      avatarUrl: req.body.avatarBase64 ? await saveBase64Image(req.body.avatarBase64, "avatars", "avatar") : null,
+      avatarUrl: req.body.avatarUrl ?? null,
       isActive: true,
     });
     res.status(201).json(serializeUser(user));
@@ -309,7 +307,7 @@ adminRouter.post(
       passwordHash: await bcrypt.hash(req.body.password, 12),
       name: req.body.name,
       roleId: role._id,
-      avatarUrl: req.body.avatarBase64 ? await saveBase64Image(req.body.avatarBase64, "avatars", "avatar") : null,
+      avatarUrl: req.body.avatarUrl ?? null,
       isActive: true,
     });
     res.status(201).json({
@@ -355,12 +353,12 @@ adminRouter.patch(
     if (req.body.name !== undefined) user.name = req.body.name;
     if (req.body.companyId !== undefined) user.companyId = company._id;
     if (req.body.isActive !== undefined) user.isActive = req.body.isActive;
-    if (req.body.avatarBase64 !== undefined) {
-      const avatarUrl = await saveBase64Image(req.body.avatarBase64, "avatars", "avatar");
-      if (user.avatarUrl) {
-        await removeUploadedFile(user.avatarUrl, "avatars");
+    if (req.body.avatarUrl !== undefined) {
+      const previousAvatar = user.avatarUrl;
+      user.avatarUrl = req.body.avatarUrl;
+      if (previousAvatar) {
+        await deleteImage(previousAvatar);
       }
-      user.avatarUrl = avatarUrl;
     }
     await user.save();
     res.json(serializeUser(user));

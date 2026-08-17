@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { companySettingsUpdateSchema } from "@erp/shared";
+import { companySettingsUpdateSchema, logoUploadSchema } from "@erp/shared";
 import { auth } from "../middleware/auth";
 import { rbac } from "../middleware/rbac";
 import { company } from "../middleware/company";
@@ -8,7 +8,7 @@ import { asyncHandler } from "../utils/async-handler";
 import { AppError } from "../utils/errors";
 import { CompanyModel } from "../models";
 import { serializeCompany } from "../utils/serializers";
-import { removeUploadedFile, saveBase64Image } from "../utils/uploads";
+import { deleteImage } from "../utils/cloudflare-images";
 import { writeAudit } from "../services/audit.service";
 
 export const companyRouter = Router();
@@ -68,21 +68,18 @@ companyRouter.patch(
 companyRouter.post(
   "/logo",
   rbac("companies:write"),
+  validate(logoUploadSchema),
   asyncHandler(async (req, res) => {
-    if (typeof req.body.image !== "string") {
-      throw new AppError(400, "image is required");
-    }
     const companyDoc = await CompanyModel.findById(req.companyId);
     if (!companyDoc) {
       throw new AppError(404, "company not found");
     }
     const previousLogo = companyDoc.logoUrl;
-    const logoUrl = await saveBase64Image(req.body.image, "logos");
-    if (previousLogo) {
-      await removeUploadedFile(previousLogo, "logos");
-    }
-    companyDoc.logoUrl = logoUrl;
+    companyDoc.logoUrl = req.body.logoUrl;
     await companyDoc.save();
+    if (previousLogo) {
+      await deleteImage(previousLogo);
+    }
     await writeAudit({
       companyId: req.companyId,
       userId: req.userId,
@@ -90,9 +87,9 @@ companyRouter.post(
       entity: "Company",
       entityId: companyDoc._id.toString(),
       before: { logoUrl: previousLogo },
-      after: { logoUrl },
+      after: { logoUrl: companyDoc.logoUrl },
       ip: req.ip,
     });
-    res.json({ logoUrl });
+    res.json({ logoUrl: companyDoc.logoUrl });
   }),
 );

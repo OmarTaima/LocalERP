@@ -100,10 +100,10 @@ export default function SettingsPage() {
       .catch(() => undefined);
   }, []);
 
-  const handleAvatarPicked = async (dataUrl: string) => {
+  const handleAvatarPicked = async (url: string) => {
     setUploading(true);
     try {
-      const res = await api<{ avatarUrl: string }>("/auth/avatar", { method: "POST", body: { image: dataUrl } });
+      const res = await api<{ avatarUrl: string }>("/auth/avatar", { method: "POST", body: { avatarUrl: url } });
       setAvatarUrl(res.avatarUrl);
       toastSuccess("Avatar updated");
     } catch (err) {
@@ -113,11 +113,11 @@ export default function SettingsPage() {
     }
   };
 
-  const handleLogoPicked = async (dataUrl: string) => {
+  const handleLogoPicked = async (url: string) => {
     if (!company) return;
     setLogoUploading(true);
     try {
-      const res = await api<{ logoUrl: string }>("/company/logo", { method: "POST", body: { image: dataUrl } });
+      const res = await api<{ logoUrl: string }>("/company/logo", { method: "POST", body: { logoUrl: url } });
       setCompany({ ...company, logoUrl: res.logoUrl });
       toastSuccess("Logo updated");
     } catch (err) {
@@ -212,7 +212,7 @@ export default function SettingsPage() {
                 <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
                   <AvatarUpload
                     value={assetUrl(avatarUrl) ?? null}
-                    onChange={(dataUrl) => { if (dataUrl) void handleAvatarPicked(dataUrl); }}
+                    onChange={(url) => { if (url) void handleAvatarPicked(url); }}
                     disabled={!canEditProfile || uploading}
                     size={84}
                     placeholderIcon={<Typography sx={{ fontSize: 28, fontWeight: 700 }}>{initials}</Typography>}
@@ -337,10 +337,11 @@ export default function SettingsPage() {
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "flex-start", sm: "center" }} sx={{ mb: 2 }}>
                       <AvatarUpload
                         value={assetUrl(company.logoUrl) ?? null}
-                        onChange={(dataUrl) => { if (dataUrl) void handleLogoPicked(dataUrl); }}
+                        onChange={(url) => { if (url) void handleLogoPicked(url); }}
                         disabled={!canEditCompany || logoUploading}
                         size={56}
                         shape="rounded"
+                        folder="logos"
                         placeholderIcon={<BusinessOutlinedIcon sx={{ fontSize: 28 }} />}
                       />
                       <Box sx={{ flex: 1, minWidth: 0 }}>

@@ -2,26 +2,30 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import { env } from "../config/env";
 import { ROLE_PRESETS } from "../constants/permissions";
-import { BatchModel, RoleModel, CompanyModel, UserModel } from "../models";
+import { BatchModel, RoleModel, CompanyModel, UserModel, WorkOrderModel } from "../models";
 import { createNotification } from "../services/notification.service";
 import { writeAudit } from "../services/audit.service";
-import { createCategory, createProduct } from "../services/catalog.service";
-import { createWarehouse, adjustStock } from "../services/inventory.service";
+import { createCategory, createProduct, upsertReorderRule } from "../services/catalog.service";
+import { createWarehouse, adjustStock, createTransfer, receiveTransfer } from "../services/inventory.service";
 import {
   createCustomer,
   createOrder,
   createPayment,
   createQuote,
+  convertQuote,
   createRecurringInvoice,
+  createRma,
+  updateRmaStatus,
   createShipment,
   updateOrderStatus,
   updateQuote,
+  updateRecurringStatus,
   updateShipmentStatus,
 } from "../services/sales.service";
 import { createSupplier, createPurchaseOrder, approvePurchaseOrder, receivePurchaseOrder } from "../services/purchasing.service";
-import { createBom, createWorkCenter, createWorkOrder, startWorkOrder, completeWorkOrder, generateMrpSuggestions, actionMrpSuggestion, listMrpSuggestions } from "../services/manufacturing.service";
-import { seedDefaultAccounts } from "../models/account";
-import { createJournalEntry, createExpense, createExpenseClaim, updateExpenseClaimStatus, upsertExchangeRate, listAccounts } from "../services/finance.service";
+import { createBom, createWorkCenter, createWorkOrder, startWorkOrder, completeWorkOrder, cancelWorkOrder, generateMrpSuggestions, actionMrpSuggestion, listMrpSuggestions } from "../services/manufacturing.service";
+import { seedPresetRoles } from "../services/auth.service";
+import { createJournalEntry, createExpense, createExpenseClaim, updateExpenseClaimStatus, upsertExchangeRate, listAccounts, seedAccounts } from "../services/finance.service";
 import {
   createDepartment,
   createEmployee,
@@ -89,9 +93,10 @@ async function run(): Promise<void> {
   const companyId = company._id.toString();
   console.log("[seed] company created");
 
-  for (const [name, permissions] of Object.entries(ROLE_PRESETS)) {
-    await RoleModel.create({ companyId: company._id, name, permissions, isSystem: true });
-  }
+  // seedPresetRoles creates manager/accountant/support/employee/user (isSystem: true)
+  // but deliberately excludes the admin preset, so the admin role is created here.
+  await seedPresetRoles(companyId);
+  await RoleModel.create({ companyId: company._id, name: "admin", permissions: ROLE_PRESETS.admin, isSystem: true });
   const roles = await RoleModel.find({ companyId: company._id }).lean();
   const roleId = (name: string) => roles.find((r) => r.name === name)!._id.toString();
   console.log("[seed] roles:", roles.map((r) => r.name).join(", "));
@@ -102,6 +107,13 @@ async function run(): Promise<void> {
     { email: "accountant@acme.demo", name: "Lina Finance", role: "user", password: PASSWORD },
     { email: "support@acme.demo", name: "Sam Support", role: "user", password: PASSWORD },
     { email: "employee@acme.demo", name: "Nour Employee", role: "user", password: PASSWORD },
+    { email: "manager@acme.demo", name: "Daniel Morgan", role: "manager", password: PASSWORD },
+    { email: "sales@acme.demo", name: "Ava Mitchell", role: "support", password: PASSWORD },
+    { email: "ops@acme.demo", name: "Leo Fernandes", role: "manager", password: PASSWORD },
+    { email: "finance@acme.demo", name: "Mia Torres", role: "accountant", password: PASSWORD },
+    { email: "hr@acme.demo", name: "Ethan Cole", role: "employee", password: PASSWORD },
+    { email: "warehouse@acme.demo", name: "Ryan Osei", role: "user", password: PASSWORD },
+    { email: "it@acme.demo", name: "Grace Lin", role: "user", password: PASSWORD },
   ];
   const users: Record<string, string> = {};
   for (const u of userData) {
@@ -118,10 +130,10 @@ async function run(): Promise<void> {
     });
     users[u.email] = doc._id.toString();
   }
-  console.log("[seed] users: " + ADMIN_EMAIL + " (admin), " + DEMO_EMAIL + " + 3 others (user)");
+  console.log(`[seed] ${userData.length} users created (${roles.length} roles)`);
 
-  await seedDefaultAccounts(companyId);
-  console.log("[seed] chart of accounts seeded");
+  const seededAccounts = await seedAccounts(companyId);
+  console.log(`[seed] chart of accounts seeded (${seededAccounts} accounts)`);
 
   const mainWarehouse = await createWarehouse(companyId, users[ADMIN_EMAIL], { name: "Main Warehouse", address: "1 Industrial Park, Newark NJ", isDefault: true });
   const eastWarehouse = await createWarehouse(companyId, users[ADMIN_EMAIL], { name: "East Distribution Center", address: "15 Harbor Blvd, Boston MA" });
@@ -152,6 +164,12 @@ async function run(): Promise<void> {
     { sku: "PK-BWR", name: "Bubble Wrap Roll", price: 8, cost: 3, category: 3, threshold: 10, main: 8 },
     { sku: "RM-ALP", name: "Aluminum Profile 1m", price: 6, cost: 2.5, category: 4, threshold: 100, main: 400 },
     { sku: "RM-SCR", name: "Steel Screw Pack", price: 4, cost: 1.2, category: 4, threshold: 30, main: 12 },
+    { sku: "EL-LT14", name: '14" Business Laptop', price: 899, cost: 620, category: 0, threshold: 5, main: 18, east: 8 },
+    { sku: "EL-TB10", name: '10" Tablet T10', price: 349, cost: 230, category: 0, threshold: 8, main: 25, east: 10 },
+    { sku: "AC-DCK", name: "USB-C Docking Station", price: 129, cost: 74, category: 1, threshold: 6, main: 22, east: 8 },
+    { sku: "EL-PR4", name: "Laser Printer P4", price: 249, cost: 150, category: 0, threshold: 4, main: 10 },
+    { sku: "EL-MN24", name: '24" FHD Monitor', price: 199, cost: 120, category: 0, threshold: 6, main: 30, east: 15 },
+    { sku: "OF-SHF", name: "Steel Storage Shelf", price: 179, cost: 98, category: 2, threshold: 4, main: 12, east: 6 },
   ];
   const productIds: string[] = [];
   for (const p of products) {
@@ -175,7 +193,12 @@ async function run(): Promise<void> {
   await BatchModel.create([
     { companyId: company._id, lotNumber: "RM-ALP-2601", productId: productIds[14], quantity: 400, expiryDate: daysAgo(-365), supplierId: null, receivedAt: new Date() },
     { companyId: company._id, lotNumber: "PK-BWR-2602", productId: productIds[13], quantity: 30, expiryDate: daysAgo(-120), supplierId: null, receivedAt: new Date() },
+    { companyId: company._id, lotNumber: "PK-BOX-2603", productId: productIds[12], quantity: 300, expiryDate: daysAgo(-75), supplierId: null, receivedAt: new Date() },
+    { companyId: company._id, lotNumber: "PK-BWR-2604", productId: productIds[13], quantity: 20, expiryDate: daysAgo(-45), supplierId: null, receivedAt: new Date() },
+    { companyId: company._id, lotNumber: "RM-SCR-2605", productId: productIds[15], quantity: 100, expiryDate: daysAgo(-30), supplierId: null, receivedAt: new Date() },
+    { companyId: company._id, lotNumber: "RM-ALP-2606", productId: productIds[14], quantity: 150, expiryDate: daysAgo(-60), supplierId: null, receivedAt: new Date() },
   ]);
+  console.log("[seed] 6 batches (4 expiring within 90 days)");
 
   const customers: Array<{ name: string; email: string; phone: string; creditLimit: number; addresses: Array<{ label: string; street: string; city: string; country: string }> }> = [
     { name: "Acme Retail Ltd", email: "orders@acme-retail.com", phone: "+1-555-0101", creditLimit: 50000, addresses: [{ label: "HQ", street: "1 Market St", city: "San Francisco", country: "USA" }] },
@@ -206,87 +229,143 @@ async function run(): Promise<void> {
       idempotencyKey: `seed-pay-${key}`,
     });
   };
+  const deliveredOrderIds: Array<{ id: string }> = [];
+  const shipOrder = async (spec: Array<[number, number]>, carrier: string, key: string, deliver: boolean) => {
+    const order = await createOrder(companyId, users[ADMIN_EMAIL], {
+      customerId: customerIds[(orderCount * 3 + 1) % customers.length],
+      items: spec.map(([idx, qty]) => orderItem(idx, qty)),
+      shippingAddress: shipAddress("Depot"),
+      idempotencyKey: `seed-order-ship-${key}`,
+    });
+    await advanceToPaid(order, "transfer", key);
+    const shipment = await createShipment(companyId, users[ADMIN_EMAIL], {
+      orderId: order.id,
+      carrier,
+      trackingNumber: `TRK${key}${Date.now().toString().slice(-6)}`,
+      pickList: order.items.map((item: { productId: string; quantity: number }) => ({ productId: item.productId, quantity: item.quantity, fromWarehouseId: mainId })),
+    });
+    await updateShipmentStatus(companyId, users[ADMIN_EMAIL], shipment.id, { status: "packed" });
+    await updateShipmentStatus(companyId, users[ADMIN_EMAIL], shipment.id, { status: "shipped", trackingNumber: shipment.trackingNumber });
+    if (deliver) {
+      await updateShipmentStatus(companyId, users[ADMIN_EMAIL], shipment.id, { status: "delivered" });
+      deliveredOrderIds.push(order);
+    }
+    orderCount++;
+  };
 
-  for (let i = 0; i < 2; i++) {
+  const draftSpecs: Array<[number, number]> = [[0, 2], [1, 1], [16, 1], [17, 2], [18, 2]];
+  for (let i = 0; i < draftSpecs.length; i++) {
     await createOrder(companyId, users[ADMIN_EMAIL], {
       customerId: customerIds[(i * 2) % customers.length],
-      items: [orderItem(i % productIds.length, 2)],
+      items: [orderItem(draftSpecs[i][0], draftSpecs[i][1])],
       shippingAddress: shipAddress("Main"),
       idempotencyKey: `seed-order-draft-${i}`,
     });
     orderCount++;
   }
-  for (let i = 0; i < 3; i++) {
+  const confirmedSpecs: Array<[number, number][]> = [
+    [[2, 2], [4, 1]],
+    [[6, 2], [7, 1]],
+    [[10, 2], [3, 1]],
+    [[19, 1]],
+    [[21, 1]],
+    [[16, 1], [18, 1]],
+  ];
+  for (let i = 0; i < confirmedSpecs.length; i++) {
     const order = await createOrder(companyId, users[ADMIN_EMAIL], {
       customerId: customerIds[(i * 3 + 1) % customers.length],
-      items: [orderItem((i * 2 + 2) % productIds.length, 2), orderItem((i * 3 + 4) % productIds.length, 1)],
+      items: confirmedSpecs[i].map(([idx, qty]) => orderItem(idx, qty)),
       shippingAddress: shipAddress("Office"),
       idempotencyKey: `seed-order-confirmed-${i}`,
     });
     await updateOrderStatus(companyId, users[ADMIN_EMAIL], order.id, "confirmed");
     orderCount++;
   }
-  for (let i = 0; i < 4; i++) {
+  const paidSpecs: Array<[number, number][]> = [
+    [[5, 3], [3, 2]],
+    [[7, 2], [5, 1]],
+    [[9, 2], [7, 2]],
+    [[11, 3], [9, 2]],
+    [[17, 2]],
+    [[20, 1], [6, 1]],
+  ];
+  const paidMethods: Array<"card" | "transfer" | "cash"> = ["card", "transfer", "cash", "card", "transfer", "cash"];
+  for (let i = 0; i < paidSpecs.length; i++) {
     const order = await createOrder(companyId, users[ADMIN_EMAIL], {
       customerId: customerIds[(i * 4 + 2) % customers.length],
-      items: [orderItem((i * 2 + 5) % productIds.length, 3), orderItem((i * 2 + 3) % productIds.length, 2)],
+      items: paidSpecs[i].map(([idx, qty]) => orderItem(idx, qty)),
       shippingAddress: shipAddress("Depot"),
       idempotencyKey: `seed-order-paid-${i}`,
     });
-    await advanceToPaid(order, ["card", "transfer", "cash", "card"][i] as "card" | "transfer" | "cash", `p${i}`);
+    await advanceToPaid(order, paidMethods[i], `p${i}`);
     orderCount++;
   }
-  for (let i = 0; i < 3; i++) {
-    const order = await createOrder(companyId, users[ADMIN_EMAIL], {
-      customerId: customerIds[(i * 3 + 3) % customers.length],
-      items: [orderItem((i * 3 + 6) % productIds.length, 2), orderItem((i * 2 + 7) % productIds.length, 1)],
-      shippingAddress: shipAddress("Plant"),
-      idempotencyKey: `seed-order-shipped-${i}`,
-    });
-    await advanceToPaid(order, "transfer", `s${i}`);
-    const shipment = await createShipment(companyId, users[ADMIN_EMAIL], {
-      orderId: order.id,
-      carrier: ["DHL", "FedEx", "UPS"][i],
-      trackingNumber: `TRK${i}${Date.now().toString().slice(-6)}`,
-      pickList: order.items.map((item: { productId: string; quantity: number }) => ({ productId: item.productId, quantity: item.quantity, fromWarehouseId: mainId })),
-    });
-    await updateShipmentStatus(companyId, users[ADMIN_EMAIL], shipment.id, { status: "packed" });
-    await updateShipmentStatus(companyId, users[ADMIN_EMAIL], shipment.id, { status: "shipped", trackingNumber: shipment.trackingNumber });
-    orderCount++;
+  const shippedSpecs: Array<{ spec: Array<[number, number]>; carrier: string }> = [
+    { spec: [[6, 2], [7, 1]], carrier: "DHL" },
+    { spec: [[9, 3]], carrier: "FedEx" },
+    { spec: [[12, 2], [11, 1]], carrier: "UPS" },
+    { spec: [[0, 2], [4, 1]], carrier: "DHL" },
+    { spec: [[1, 3]], carrier: "FedEx" },
+  ];
+  for (let i = 0; i < shippedSpecs.length; i++) {
+    await shipOrder(shippedSpecs[i].spec, shippedSpecs[i].carrier, `s${i}`, false);
   }
-  for (let i = 0; i < 2; i++) {
-    const order = await createOrder(companyId, users[ADMIN_EMAIL], {
-      customerId: customerIds[(i * 5 + 4) % customers.length],
-      items: [orderItem((i * 2 + 9) % productIds.length, 2), orderItem((i * 3 + 10) % productIds.length, 1)],
-      shippingAddress: shipAddress("HQ"),
-      idempotencyKey: `seed-order-delivered-${i}`,
-    });
-    await advanceToPaid(order, "card", `d${i}`);
-    const shipment = await createShipment(companyId, users[ADMIN_EMAIL], {
-      orderId: order.id,
-      carrier: ["DHL", "UPS"][i],
-      trackingNumber: `TRKD${i}${Date.now().toString().slice(-6)}`,
-      pickList: order.items.map((item: { productId: string; quantity: number }) => ({ productId: item.productId, quantity: item.quantity, fromWarehouseId: mainId })),
-    });
-    await updateShipmentStatus(companyId, users[ADMIN_EMAIL], shipment.id, { status: "packed" });
-    await updateShipmentStatus(companyId, users[ADMIN_EMAIL], shipment.id, { status: "shipped", trackingNumber: shipment.trackingNumber });
-    await updateShipmentStatus(companyId, users[ADMIN_EMAIL], shipment.id, { status: "delivered" });
-    orderCount++;
+  const deliveredSpecs: Array<{ spec: Array<[number, number]>; carrier: string }> = [
+    { spec: [[4, 2], [10, 1]], carrier: "DHL" },
+    { spec: [[9, 2], [13, 1]], carrier: "UPS" },
+    { spec: [[5, 2]], carrier: "FedEx" },
+    { spec: [[6, 2], [11, 1]], carrier: "DHL" },
+    { spec: [[12, 50]], carrier: "UPS" },
+  ];
+  for (let i = 0; i < deliveredSpecs.length; i++) {
+    await shipOrder(deliveredSpecs[i].spec, deliveredSpecs[i].carrier, `d${i}`, true);
   }
-  console.log(`[seed] ${orderCount} orders across all statuses`);
+  const cancelledA = await createOrder(companyId, users[ADMIN_EMAIL], {
+    customerId: customerIds[3],
+    items: [orderItem(20, 2)],
+    shippingAddress: shipAddress("Main"),
+    idempotencyKey: "seed-order-cancelled-0",
+  });
+  await updateOrderStatus(companyId, users[ADMIN_EMAIL], cancelledA.id, "cancelled");
+  orderCount++;
+  const cancelledB = await createOrder(companyId, users[ADMIN_EMAIL], {
+    customerId: customerIds[6],
+    items: [orderItem(21, 1)],
+    shippingAddress: shipAddress("HQ"),
+    idempotencyKey: "seed-order-cancelled-1",
+  });
+  await updateOrderStatus(companyId, users[ADMIN_EMAIL], cancelledB.id, "confirmed");
+  await updateOrderStatus(companyId, users[ADMIN_EMAIL], cancelledB.id, "cancelled");
+  orderCount++;
+  console.log(`[seed] ${orderCount} orders across all statuses (draft x5, confirmed x6, paid x6, shipped x5, delivered x5, cancelled x2)`);
 
-  for (let i = 0; i < 2; i++) {
+  const quoteSpecs: Array<{ customer: number; items: Array<[number, number]>; validInDays: number }> = [
+    { customer: 0, items: [[0, 2], [6, 2]], validInDays: -10 },
+    { customer: 1, items: [[1, 5]], validInDays: -12 },
+    { customer: 3, items: [[2, 2], [4, 1]], validInDays: -14 },
+    { customer: 4, items: [[16, 1]], validInDays: -6 },
+    { customer: 5, items: [[3, 2]], validInDays: -5 },
+    { customer: 6, items: [[17, 2]], validInDays: -8 },
+    { customer: 7, items: [[18, 1], [20, 1]], validInDays: 15 },
+  ];
+  const qConvert = await createQuote(companyId, users[ADMIN_EMAIL], {
+    customerId: customerIds[quoteSpecs[0].customer],
+    items: quoteSpecs[0].items.map(([idx, qty]) => orderItem(idx, qty)),
+    validUntil: isoDaysAgo(quoteSpecs[0].validInDays),
+  });
+  await updateQuote(companyId, users[ADMIN_EMAIL], qConvert.id, { status: "sent" });
+  const convertedOrder = await convertQuote(companyId, users[ADMIN_EMAIL], qConvert.id);
+  orderCount++;
+  for (let i = 1; i < quoteSpecs.length; i++) {
     const quote = await createQuote(companyId, users[ADMIN_EMAIL], {
-      customerId: customerIds[(i * 3 + 5) % customers.length],
-      items: [orderItem(i * 2 + 1, 2), orderItem(i * 2 + 8, 2)],
-      validUntil: isoDaysAgo(-10),
+      customerId: customerIds[quoteSpecs[i].customer],
+      items: quoteSpecs[i].items.map(([idx, qty]) => orderItem(idx, qty)),
+      validUntil: isoDaysAgo(quoteSpecs[i].validInDays),
     });
-    await updateQuote(companyId, users[ADMIN_EMAIL], quote.id, { status: "sent" });
+    if (i >= 1 && i <= 3) await updateQuote(companyId, users[ADMIN_EMAIL], quote.id, { status: "sent" });
+    if (i === 4 || i === 5) await updateQuote(companyId, users[ADMIN_EMAIL], quote.id, { status: "declined" });
   }
-  await createQuote(companyId, users[ADMIN_EMAIL], { customerId: customerIds[2], items: [orderItem(4, 2), orderItem(11, 2)], validUntil: isoDaysAgo(-20) });
-  const declined = await createQuote(companyId, users[ADMIN_EMAIL], { customerId: customerIds[5], items: [orderItem(3, 2)], validUntil: isoDaysAgo(-5) });
-  await updateQuote(companyId, users[ADMIN_EMAIL], declined.id, { status: "declined" });
-  console.log("[seed] 4 quotes");
+  console.log(`[seed] 7 quotes (4 sent incl. 1 converted to ${convertedOrder.orderNumber}, 2 declined, 1 draft)`);
 
   await createRecurringInvoice(companyId, users[ADMIN_EMAIL], {
     customerId: customerIds[0],
@@ -300,7 +379,65 @@ async function run(): Promise<void> {
     interval: "quarterly",
     dayOfPeriod: 15,
   });
-  console.log("[seed] 2 recurring invoices");
+  await createRecurringInvoice(companyId, users[ADMIN_EMAIL], {
+    customerId: customerIds[2],
+    items: [{ productId: productIds[16], name: '14" Business Laptop', quantity: 5, unitPrice: 899 }],
+    interval: "monthly",
+    dayOfPeriod: 5,
+  });
+  const rec4 = await createRecurringInvoice(companyId, users[ADMIN_EMAIL], {
+    customerId: customerIds[4],
+    items: [{ name: "Warehouse cleaning service", quantity: 1, unitPrice: 350 }],
+    interval: "weekly",
+    dayOfPeriod: 1,
+  });
+  await updateRecurringStatus(companyId, users[ADMIN_EMAIL], rec4.id, "paused");
+  console.log("[seed] 4 recurring invoices (3 active, 1 paused)");
+
+  // batchId is optional in createRma items — omitted here, the service tolerates it.
+  const rma1 = await createRma(companyId, users[ADMIN_EMAIL], {
+    orderId: deliveredOrderIds[0].id,
+    items: [{ productId: productIds[4], quantity: 1, condition: "defective" }],
+    reason: "monitor flickers on arrival",
+  });
+  await updateRmaStatus(companyId, users[ADMIN_EMAIL], rma1.id, "approved");
+  const rma2 = await createRma(companyId, users[ADMIN_EMAIL], {
+    orderId: deliveredOrderIds[1].id,
+    items: [{ productId: productIds[13], quantity: 1, condition: "damaged" }],
+    reason: "bubble wrap roll split in transit",
+  });
+  await updateRmaStatus(companyId, users[ADMIN_EMAIL], rma2.id, "approved");
+  await updateRmaStatus(companyId, users[ADMIN_EMAIL], rma2.id, "received");
+  const rma3 = await createRma(companyId, users[ADMIN_EMAIL], {
+    orderId: deliveredOrderIds[2].id,
+    items: [{ productId: productIds[5], quantity: 1, condition: "defective" }],
+    reason: "webcam not detected by the laptop",
+  });
+  await updateRmaStatus(companyId, users[ADMIN_EMAIL], rma3.id, "approved");
+  await updateRmaStatus(companyId, users[ADMIN_EMAIL], rma3.id, "received");
+  // updateRmaStatus "refunded" records the refund Payment (method "refund") through the real
+  // service; a direct createPayment(method: "refund") is rejected by the balance guards.
+  await updateRmaStatus(companyId, users[ADMIN_EMAIL], rma3.id, "refunded");
+  console.log("[seed] 3 RMAs (approved / received / refunded — refund payment recorded)");
+
+  const transfer1 = await createTransfer(companyId, users[ADMIN_EMAIL], {
+    fromWarehouseId: mainId,
+    toWarehouseId: eastId,
+    items: [{ productId: productIds[0], quantity: 15 }],
+  });
+  await receiveTransfer(companyId, users[ADMIN_EMAIL], transfer1.id);
+  const transfer2 = await createTransfer(companyId, users[ADMIN_EMAIL], {
+    fromWarehouseId: mainId,
+    toWarehouseId: eastId,
+    items: [{ productId: productIds[1], quantity: 25 }],
+  });
+  await receiveTransfer(companyId, users[ADMIN_EMAIL], transfer2.id);
+  await createTransfer(companyId, users[ADMIN_EMAIL], {
+    fromWarehouseId: mainId,
+    toWarehouseId: eastId,
+    items: [{ productId: productIds[12], quantity: 200 }],
+  });
+  console.log(`[seed] 3 transfers main→east (2 received: ${transfer1.referenceNumber}, ${transfer2.referenceNumber}; 1 in-transit)`);
 
   const suppliers: Array<{ name: string; contactName: string; email: string; phone: string; address: string; paymentTerms: string }> = [
     { name: "Northwind Components", contactName: "Alice Chen", email: "sales@northwind-parts.com", phone: "+1-555-0201", address: "12 Industrial Pkwy, Cleveland OH", paymentTerms: "Net 30" },
@@ -317,36 +454,27 @@ async function run(): Promise<void> {
   console.log(`[seed] ${suppliers.length} suppliers`);
 
   const poItem = (idx: number, qty: number, cost: number) => ({ productId: productIds[idx], quantity: qty, unitCost: cost });
-  const po1 = await createPurchaseOrder(companyId, users[ADMIN_EMAIL], {
-    supplierId: supplierIds[0],
-    items: [poItem(12, 2500, 0.5), poItem(13, 40, 3)],
-    expectedDate: isoDaysAgo(-14),
-  });
-  await approvePurchaseOrder(companyId, users[ADMIN_EMAIL], po1.id, { approved: true });
-  const po2 = await createPurchaseOrder(companyId, users[ADMIN_EMAIL], {
-    supplierId: supplierIds[2],
-    items: [poItem(12, 3500, 0.5), poItem(13, 50, 3)],
-    expectedDate: isoDaysAgo(-10),
-  });
-  await approvePurchaseOrder(companyId, users[ADMIN_EMAIL], po2.id, { approved: true });
-  const smallSent = await createPurchaseOrder(companyId, users[ADMIN_EMAIL], {
-    supplierId: supplierIds[2],
-    items: [poItem(12, 50, 0.5)],
-    expectedDate: isoDaysAgo(21),
-  });
-  const largePending = await createPurchaseOrder(companyId, users[ADMIN_EMAIL], {
-    supplierId: supplierIds[4],
-    items: [poItem(9, 30, 250), poItem(8, 100, 12)],
-    expectedDate: isoDaysAgo(10),
-  });
-  const approved = await createPurchaseOrder(companyId, users[ADMIN_EMAIL], {
-    supplierId: supplierIds[3],
-    items: [poItem(14, 400, 2), poItem(15, 600, 0.8)],
-    expectedDate: isoDaysAgo(-7),
-  });
-  await approvePurchaseOrder(companyId, users[ADMIN_EMAIL], approved.id, { approved: true });
-  await receivePurchaseOrder(companyId, users[ADMIN_EMAIL], approved.id);
-  console.log(`[seed] 6 POs (sent=${smallSent.id}, pendingApproval=${largePending.id}, received=${approved.id})`);
+  // sent x2 (total <= approval threshold)
+  await createPurchaseOrder(companyId, users[ADMIN_EMAIL], { supplierId: supplierIds[2], items: [poItem(12, 50, 0.5)], expectedDate: isoDaysAgo(21) });
+  await createPurchaseOrder(companyId, users[ADMIN_EMAIL], { supplierId: supplierIds[0], items: [poItem(13, 20, 3)], expectedDate: isoDaysAgo(14) });
+  // pending-approval x2 (total > threshold)
+  await createPurchaseOrder(companyId, users[ADMIN_EMAIL], { supplierId: supplierIds[4], items: [poItem(9, 30, 250), poItem(10, 100, 12)], expectedDate: isoDaysAgo(10) });
+  await createPurchaseOrder(companyId, users[ADMIN_EMAIL], { supplierId: supplierIds[1], items: [poItem(14, 400, 2), poItem(15, 600, 0.8)], expectedDate: isoDaysAgo(7) });
+  // approved x2 (routed to approval, then approved -> sent)
+  const poApprovedA = await createPurchaseOrder(companyId, users[ADMIN_EMAIL], { supplierId: supplierIds[3], items: [poItem(14, 600, 2), poItem(15, 200, 0.8)], expectedDate: isoDaysAgo(-5) });
+  await approvePurchaseOrder(companyId, users[ADMIN_EMAIL], poApprovedA.id, { approved: true });
+  const poApprovedB = await createPurchaseOrder(companyId, users[ADMIN_EMAIL], { supplierId: supplierIds[0], items: [poItem(12, 2500, 0.5), poItem(13, 40, 3)], expectedDate: isoDaysAgo(-3) });
+  await approvePurchaseOrder(companyId, users[ADMIN_EMAIL], poApprovedB.id, { approved: true });
+  // received x2 (one direct, one via approval)
+  const poReceivedA = await createPurchaseOrder(companyId, users[ADMIN_EMAIL], { supplierId: supplierIds[2], items: [poItem(12, 300, 0.5)], expectedDate: isoDaysAgo(-8) });
+  await receivePurchaseOrder(companyId, users[ADMIN_EMAIL], poReceivedA.id);
+  const poReceivedB = await createPurchaseOrder(companyId, users[ADMIN_EMAIL], { supplierId: supplierIds[3], items: [poItem(14, 600, 2.5), poItem(15, 400, 0.8)], expectedDate: isoDaysAgo(-6) });
+  await approvePurchaseOrder(companyId, users[ADMIN_EMAIL], poReceivedB.id, { approved: true });
+  await receivePurchaseOrder(companyId, users[ADMIN_EMAIL], poReceivedB.id);
+  // rejected x1 with note
+  const poRejected = await createPurchaseOrder(companyId, users[ADMIN_EMAIL], { supplierId: supplierIds[4], items: [poItem(16, 10, 600)], expectedDate: isoDaysAgo(5) });
+  await approvePurchaseOrder(companyId, users[ADMIN_EMAIL], poRejected.id, { approved: false, note: "Budget rejected — renegotiate pricing with vendor" });
+  console.log(`[seed] 9 POs: sent x2, pending-approval x2, approved x2, received x2, rejected x1 (${poRejected.poNumber})`);
 
   const workCenters: string[] = [];
   for (const [name, costPerHour, capacity] of [["Assembly Line A", 45, 100], ["CNC Station", 60, 50], ["Finishing Bench", 30, 80]] as const) {
@@ -369,8 +497,13 @@ async function run(): Promise<void> {
   }
   console.log("[seed] 3 work centers + 4 BOMs");
 
-  await createWorkOrder(companyId, users[ADMIN_EMAIL], { bomId: boms[0], quantity: 20, workCenterId: workCenters[0], plannedHours: 30 });
-  await createWorkOrder(companyId, users[ADMIN_EMAIL], { bomId: boms[2], quantity: 30, workCenterId: workCenters[2], plannedHours: 12 });
+  const wo1 = await createWorkOrder(companyId, users[ADMIN_EMAIL], { bomId: boms[0], quantity: 20, workCenterId: workCenters[0], plannedHours: 30 });
+  const wo3 = await createWorkOrder(companyId, users[ADMIN_EMAIL], { bomId: boms[2], quantity: 30, workCenterId: workCenters[2], plannedHours: 12 });
+  // There is no releaseWorkOrder service yet (createWorkOrder always starts as "draft" and the
+  // enum "released" is otherwise unreachable), so these two status flips are the only raw write
+  // besides users/batches — remove once a release endpoint exists.
+  await WorkOrderModel.updateOne({ _id: wo1.id }, { status: "released" });
+  await WorkOrderModel.updateOne({ _id: wo3.id }, { status: "released" });
   const wo2 = await createWorkOrder(companyId, users[ADMIN_EMAIL], { bomId: boms[0], quantity: 10, workCenterId: workCenters[0], plannedHours: 16 });
   await startWorkOrder(companyId, users[ADMIN_EMAIL], wo2.id);
   const wo4 = await createWorkOrder(companyId, users[ADMIN_EMAIL], { bomId: boms[3], quantity: 5, workCenterId: workCenters[1], plannedHours: 20 });
@@ -378,8 +511,16 @@ async function run(): Promise<void> {
   await completeWorkOrder(companyId, users[ADMIN_EMAIL], wo4.id);
   const wo5 = await createWorkOrder(companyId, users[ADMIN_EMAIL], { bomId: boms[1], quantity: 8, workCenterId: workCenters[1], plannedHours: 10 });
   await startWorkOrder(companyId, users[ADMIN_EMAIL], wo5.id);
-  console.log("[seed] work orders: released x2, in-progress x2, completed x1");
+  const wo6 = await createWorkOrder(companyId, users[ADMIN_EMAIL], { bomId: boms[2], quantity: 10, workCenterId: workCenters[2], plannedHours: 8 });
+  await startWorkOrder(companyId, users[ADMIN_EMAIL], wo6.id);
+  await completeWorkOrder(companyId, users[ADMIN_EMAIL], wo6.id);
+  const wo7 = await createWorkOrder(companyId, users[ADMIN_EMAIL], { bomId: boms[3], quantity: 3, workCenterId: workCenters[1], plannedHours: 6 });
+  await cancelWorkOrder(companyId, users[ADMIN_EMAIL], wo7.id);
+  console.log("[seed] work orders: released x2, in-progress x2, completed x2, cancelled x1");
 
+  await upsertReorderRule(companyId, users[ADMIN_EMAIL], { productId: productIds[8], warehouseId: mainId, minQuantity: 10, maxQuantity: 100 });
+  await upsertReorderRule(companyId, users[ADMIN_EMAIL], { productId: productIds[13], warehouseId: mainId, minQuantity: 15, maxQuantity: 60 });
+  await upsertReorderRule(companyId, users[ADMIN_EMAIL], { productId: productIds[15], warehouseId: mainId, minQuantity: 60, maxQuantity: 200 });
   const mrpCount = await generateMrpSuggestions(companyId);
   const suggestions = await listMrpSuggestions(companyId, { pageSize: 100 });
   const open = suggestions.items.filter((s: { status: string }) => s.status === "open");
@@ -387,7 +528,7 @@ async function run(): Promise<void> {
     await actionMrpSuggestion(companyId, users[ADMIN_EMAIL], open[0].id, "actioned");
     await actionMrpSuggestion(companyId, users[ADMIN_EMAIL], open[1].id, "dismissed");
   }
-  console.log(`[seed] MRP suggestions (${mrpCount})`);
+  console.log(`[seed] MRP: ${mrpCount} suggestions from 3 reorder rules (first actioned, second dismissed, ${Math.max(0, open.length - 2)} open)`);
 
   const accounts = await listAccounts(companyId);
   const byCode = new Map(accounts.map((a: { code: string; id: string }) => [a.code, a.id]));
@@ -405,9 +546,11 @@ async function run(): Promise<void> {
   const journalFixtures: Array<{ daysAgo: number; description: string; lines: Array<{ accountId: string; debit: number; credit: number }> }> = [
     { daysAgo: 45, description: "Founder capital contribution", lines: [{ accountId: cash, debit: 50000, credit: 0 }, { accountId: equity, debit: 0, credit: 50000 }] },
     { daysAgo: 32, description: "Office rent — month", lines: [{ accountId: expense, debit: 1800, credit: 0 }, { accountId: cash, debit: 0, credit: 1800 }] },
+    { daysAgo: 30, description: "Packaging line equipment purchase", lines: [{ accountId: inv, debit: 3200, credit: 0 }, { accountId: ap, debit: 0, credit: 3200 }] },
     { daysAgo: 21, description: "Customer payment — Acme Retail", lines: [{ accountId: cash, debit: 4200, credit: 0 }, { accountId: ar, debit: 0, credit: 4200 }] },
     { daysAgo: 12, description: "Utilities — electricity", lines: [{ accountId: expense, debit: 520, credit: 0 }, { accountId: cash, debit: 0, credit: 520 }] },
     { daysAgo: 6, description: "Inventory purchase on credit", lines: [{ accountId: inv, debit: 8500, credit: 0 }, { accountId: ap, debit: 0, credit: 8500 }] },
+    { daysAgo: 3, description: "Bad debt write-off", lines: [{ accountId: expense, debit: 480, credit: 0 }, { accountId: ar, debit: 0, credit: 480 }] },
     { daysAgo: 2, description: "Consulting services billed", lines: [{ accountId: ar, debit: 2400, credit: 0 }, { accountId: revenue, debit: 0, credit: 2400 }] },
   ];
   for (const fixture of journalFixtures) {
@@ -418,7 +561,7 @@ async function run(): Promise<void> {
       lines: fixture.lines.map((line) => ({ ...line, description: fixture.description })),
     });
   }
-  console.log("[seed] 6 journal entries");
+  console.log(`[seed] ${journalFixtures.length} journal entries`);
 
   const expenseFixtures: Array<{ description: string; amount: number; category: string; daysAgo: number }> = [
     { description: "AWS hosting — monthly", amount: 240, category: "software", daysAgo: 18 },
@@ -427,11 +570,13 @@ async function run(): Promise<void> {
     { description: "Team lunch — sales offsite", amount: 460, category: "travel", daysAgo: 7 },
     { description: "Adobe Creative Cloud", amount: 110, category: "software", daysAgo: 4 },
     { description: "Printer paper + ink", amount: 85, category: "supplies", daysAgo: 1 },
+    { description: "CRM platform — annual license", amount: 1200, category: "software", daysAgo: 11 },
+    { description: "Warehouse utilities — August", amount: 620, category: "utilities", daysAgo: 2 },
   ];
   for (const e of expenseFixtures) {
     await createExpense(companyId, users[ADMIN_EMAIL], { description: e.description, amount: e.amount, category: e.category, date: isoDaysAgo(e.daysAgo) });
   }
-  console.log("[seed] 6 expenses");
+  console.log(`[seed] ${expenseFixtures.length} expenses`);
 
   const claim = await createExpenseClaim(companyId, users[ADMIN_EMAIL], {
     items: [
@@ -451,12 +596,20 @@ async function run(): Promise<void> {
   await updateExpenseClaimStatus(companyId, users[ADMIN_EMAIL], claim3.id, "submitted");
   await updateExpenseClaimStatus(companyId, users[ADMIN_EMAIL], claim3.id, "approved");
   await updateExpenseClaimStatus(companyId, users[ADMIN_EMAIL], claim3.id, "paid");
-  console.log("[seed] 3 expense claims (approved / submitted / paid)");
+  const claim4 = await createExpenseClaim(companyId, users[ADMIN_EMAIL], {
+    items: [
+      { description: "Team dinner — client visit", amount: 380, date: isoDaysAgo(6) },
+      { description: "Taxi fares", amount: 45, date: isoDaysAgo(6) },
+    ],
+  });
+  await updateExpenseClaimStatus(companyId, users[ADMIN_EMAIL], claim4.id, "submitted");
+  await updateExpenseClaimStatus(companyId, users[ADMIN_EMAIL], claim4.id, "rejected");
+  console.log("[seed] 4 expense claims (approved / submitted / paid / rejected)");
 
-  for (const [fromCurrency, toCurrency, rate] of [["USD", "EUR", 0.92], ["USD", "GBP", 0.78], ["USD", "CAD", 1.36]] as const) {
+  for (const [fromCurrency, toCurrency, rate] of [["USD", "EUR", 0.92], ["USD", "GBP", 0.78], ["USD", "CAD", 1.36], ["USD", "AED", 3.6725], ["USD", "SAR", 3.75]] as const) {
     await upsertExchangeRate(companyId, users[ADMIN_EMAIL], { fromCurrency, toCurrency, rate, date: isoDaysAgo(0) });
   }
-  console.log("[seed] 3 exchange rates");
+  console.log("[seed] 5 exchange rates (EUR, GBP, CAD, AED, SAR)");
 
   const departments: string[] = [];
   for (const name of ["Management", "Sales & Marketing", "Operations", "Finance", "Human Resources"]) {
@@ -474,6 +627,12 @@ async function run(): Promise<void> {
     { name: "Marcus Webb", email: "marcus.w@acme.demo", department: 3, position: "Payroll Specialist", salary: 61000, hireDaysAgo: 290 },
     { name: "Sofia Reyes", email: "sofia.r@acme.demo", department: 4, position: "HR Generalist", salary: 58000, hireDaysAgo: 270 },
     { name: "Tom Baker", email: "tom.b@acme.demo", department: 2, position: "Forklift Operator", salary: 44000, hireDaysAgo: 180, status: "onLeave" },
+    { name: "Daniel Morgan", email: "manager@acme.demo", department: 0, position: "Director of Operations", salary: 110000, hireDaysAgo: 240, userId: users["manager@acme.demo"] },
+    { name: "Ava Mitchell", email: "sales@acme.demo", department: 1, position: "Sales Executive", salary: 55000, hireDaysAgo: 220, userId: users["sales@acme.demo"] },
+    { name: "Leo Fernandes", email: "ops@acme.demo", department: 2, position: "Operations Coordinator", salary: 62000, hireDaysAgo: 190, userId: users["ops@acme.demo"], status: "onLeave" },
+    { name: "Mia Torres", email: "finance@acme.demo", department: 3, position: "Finance Analyst", salary: 66000, hireDaysAgo: 160, userId: users["finance@acme.demo"] },
+    { name: "Ethan Cole", email: "hr@acme.demo", department: 4, position: "HR Coordinator", salary: 54000, hireDaysAgo: 140, userId: users["hr@acme.demo"] },
+    { name: "Ryan Osei", email: "warehouse@acme.demo", department: 2, position: "Inventory Clerk", salary: 46000, hireDaysAgo: 120, userId: users["warehouse@acme.demo"] },
   ];
   const employeeIds: string[] = [];
   for (const e of employees) {
@@ -530,6 +689,9 @@ async function run(): Promise<void> {
     { employee: 2, daysAgo: 4, hours: 8, project: "Monthly close" },
     { employee: 4, daysAgo: 1, hours: 7, project: "Warehouse stocktake" },
     { employee: 6, daysAgo: 3, hours: 8, project: "MRP run support" },
+    { employee: 10, daysAgo: 2, hours: 8, project: "Q4 operations planning" },
+    { employee: 11, daysAgo: 1, hours: 7.5, project: "Key account expansion" },
+    { employee: 12, daysAgo: 2, hours: 7, project: "Month-end inventory review" },
   ];
   for (const t of timesheetFixtures) {
     const ts = await submitTimesheet(companyId, users[ADMIN_EMAIL], {
@@ -544,7 +706,7 @@ async function run(): Promise<void> {
       await approveTimesheet(companyId, users[ADMIN_EMAIL], ts.id, true);
     }
   }
-  console.log("[seed] 8 timesheets");
+  console.log(`[seed] ${timesheetFixtures.length} timesheets`);
 
   const leaves: Array<{ employee: number; type: "annual" | "sick" | "unpaid"; from: number; to: number; status: "approved" | "rejected" | "pending" }> = [
     { employee: 5, type: "annual", from: 25, to: 19, status: "approved" },
@@ -553,6 +715,8 @@ async function run(): Promise<void> {
     { employee: 2, type: "annual", from: 30, to: 27, status: "pending" },
     { employee: 9, type: "sick", from: 6, to: 4, status: "approved" },
     { employee: 7, type: "unpaid", from: 40, to: 38, status: "rejected" },
+    { employee: 10, type: "annual", from: 18, to: 15, status: "approved" },
+    { employee: 15, type: "sick", from: 8, to: 7, status: "pending" },
   ];
   for (const l of leaves) {
     const leave = await requestLeave(companyId, users[ADMIN_EMAIL], {
@@ -566,11 +730,11 @@ async function run(): Promise<void> {
       await updateLeaveStatus(companyId, users[ADMIN_EMAIL], leave.id, l.status);
     }
   }
-  console.log("[seed] 6 leave requests");
+  console.log(`[seed] ${leaves.length} leave requests`);
 
   const now = new Date();
   const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevRun =   await generatePayrollRun(companyId, users[ADMIN_EMAIL], { month: prev.getMonth() + 1, year: prev.getFullYear() });
+  const prevRun = await generatePayrollRun(companyId, users[ADMIN_EMAIL], { month: prev.getMonth() + 1, year: prev.getFullYear() });
   await payPayrollRun(companyId, users[ADMIN_EMAIL], prevRun.id);
   await generatePayrollRun(companyId, users[ADMIN_EMAIL], { month: now.getMonth() + 1, year: now.getFullYear() });
   console.log("[seed] payroll: previous paid, current draft");
@@ -580,12 +744,21 @@ async function run(): Promise<void> {
   await createNotification({ companyId, userId: users[DEMO_EMAIL], type: "stock-alert", title: "Low stock alert", body: "Cable Kit Pro is below its reorder threshold.", link: "/inventory" });
   await createNotification({ companyId, userId: users[DEMO_EMAIL], type: "leave", title: "Leave approved", body: "James Carter's annual leave was approved.", link: "/hr" });
   await createNotification({ companyId, userId: users[ADMIN_EMAIL], type: "approval", title: "PO awaiting approval", body: "A purchase order over $1,000 needs your approval.", link: "/purchasing" });
-  console.log("[seed] notifications created");
+  await createNotification({ companyId, userId: users["sales@acme.demo"], type: "order", title: "Order confirmed", body: "Acme Retail confirmed a large electronics order.", link: "/sales" });
+  await createNotification({ companyId, userId: users["ops@acme.demo"], type: "stock-alert", title: "Low stock alert", body: "Steel Screw Pack is below its reorder threshold.", link: "/inventory" });
+  await createNotification({ companyId, userId: users["hr@acme.demo"], type: "leave", title: "Leave approved", body: "Daniel Morgan's annual leave was approved.", link: "/hr" });
+  await createNotification({ companyId, userId: users["finance@acme.demo"], type: "system", title: "Payroll generated", body: "The current payroll run was generated and is awaiting payment.", link: "/hr/payroll" });
+  await createNotification({ companyId, userId: users[ADMIN_EMAIL], type: "approval", title: "PO awaiting approval", body: "Tech Parts Import PO exceeds the approval threshold.", link: "/purchasing" });
+  await createNotification({ companyId, userId: users["manager@acme.demo"], type: "invoice", title: "Recurring invoice due", body: "A recurring invoice for Acme Retail is due soon.", link: "/sales" });
+  await createNotification({ companyId, userId: users["warehouse@acme.demo"], type: "system", title: "Transfer received", body: `${transfer1.referenceNumber} was received at the East Distribution Center.`, link: "/inventory" });
+  console.log("[seed] notifications created (12 across 7 users)");
 
   await writeAudit({ companyId, userId: users[ADMIN_EMAIL], action: "create", entity: "Company", entityId: companyId, after: { seeded: true }, ip: "127.0.0.1" });
   console.log("[seed] done - demo company ready");
-  console.log("  login: " + DEMO_EMAIL + " / " + PASSWORD + "   (user)");
-  console.log("  login: " + ADMIN_EMAIL + " / " + ADMIN_PASSWORD + "   (admin - full access)");
+  console.log("[seed] demo logins (email / password / role):");
+  for (const u of userData) {
+    console.log(`  ${u.email.padEnd(28)} ${u.password.padEnd(14)} ${u.role}`);
+  }
   await mongoose.disconnect();
 }
 

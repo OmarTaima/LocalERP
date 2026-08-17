@@ -48,7 +48,7 @@ export default function UsersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [editingActive, setEditingActive] = useState(true);
-  const [avatarDraft, setAvatarDraft] = useState<string | null>(null);
+  const [avatarDraftUrl, setAvatarDraftUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && (user.kind !== "company" || !user.permissions.includes("users:read"))) {
@@ -86,14 +86,14 @@ export default function UsersPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setAvatarDraft(null);
+    setAvatarDraftUrl(null);
     setCreateOpen(true);
   };
 
   const openEdit = (row: UserRow) => {
     setEditing(row);
     setEditingActive(row.isActive);
-    setAvatarDraft(null);
+    setAvatarDraftUrl(null);
     setCreateOpen(true);
   };
 
@@ -129,7 +129,7 @@ export default function UsersPage() {
             name: values.name,
             roleId: values.roleId,
             isActive: editingActive,
-            ...(avatarDraft ? { avatarBase64: avatarDraft } : {}),
+            ...(avatarDraftUrl ? { avatarUrl: avatarDraftUrl } : {}),
           },
         });
         toastSuccess("User updated");
@@ -141,14 +141,14 @@ export default function UsersPage() {
             email: values.email,
             password: values.password,
             ...(values.roleId ? { roleId: values.roleId } : {}),
-            ...(avatarDraft ? { avatarBase64: avatarDraft } : {}),
+            ...(avatarDraftUrl ? { avatarUrl: avatarDraftUrl } : {}),
           },
         });
         toastSuccess("User created");
       }
       setCreateOpen(false);
       setEditing(null);
-      setAvatarDraft(null);
+      setAvatarDraftUrl(null);
       fetchData(page);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to save user");
@@ -254,11 +254,11 @@ export default function UsersPage() {
                 ]
           }
           onSubmit={handleSubmit}
-          onClose={() => { setCreateOpen(false); setEditing(null); setAvatarDraft(null); }}
+          onClose={() => { setCreateOpen(false); setEditing(null); setAvatarDraftUrl(null); }}
           submitLabel={editing ? "Save" : "Create user"}
         >
           <Stack spacing={2}>
-            <AvatarUpload value={avatarDraft ?? (assetUrl(editing?.avatarUrl) ?? null)} onChange={setAvatarDraft} />
+            <AvatarUpload value={avatarDraftUrl ?? (assetUrl(editing?.avatarUrl) ?? null)} onChange={setAvatarDraftUrl} />
             {editing && (
               <Stack spacing={0.5}>
                 <FormControlLabel
