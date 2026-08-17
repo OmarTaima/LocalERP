@@ -132,7 +132,7 @@ function OrdersTab() {
         emptyTitle="No orders yet"
         emptySubtitle="Create your first order to start selling"
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => void openCreate()} sx={{ display: "none" }}>New order</Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => void openCreate()}>New order</Button>
         }
         rowActions={(row) => (
           <Stack direction="row" spacing={1} justifyContent="flex-end">

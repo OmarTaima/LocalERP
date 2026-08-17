@@ -69,10 +69,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Organization",
-    items: [
-      { label: "Human Resources", icon: <BadgeOutlinedIcon />, path: "/hr" },
-      { label: "Profile", icon: <AccountCircleOutlinedIcon />, path: "/profile" },
-    ],
+    items: [{ label: "Human Resources", icon: <BadgeOutlinedIcon />, path: "/hr" }],
   },
   {
     label: "System",
