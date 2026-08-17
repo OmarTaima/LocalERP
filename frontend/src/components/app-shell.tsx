@@ -177,7 +177,7 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
         </Box>
       </Stack>
       <Divider sx={{ borderColor: "rgba(148,163,184,0.15)" }} />
-      <Box sx={{ flex: 1, overflowY: "auto", px: 1.5, py: 1.5 }}>
+      <Box sx={{ flex: 1, overflowY: "auto", px: 1.5, py: 1.5, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
         {navGroups.map((group) => (
           <Box key={group.label} sx={{ mb: 1.5 }}>
             <Typography
