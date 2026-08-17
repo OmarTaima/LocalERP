@@ -1,0 +1,33 @@
+import "dotenv/config";
+import Joi from "joi";
+
+const envSchema = Joi.object({
+  NODE_ENV: Joi.string().valid("development", "test", "production").default("development"),
+  PORT: Joi.number().integer().positive().default(4000),
+  MONGO_URI: Joi.string().default("mongodb://localhost:27017/erp"),
+  REDIS_URL: Joi.string().default("redis://localhost:6379"),
+  JWT_SECRET: Joi.string().min(16).default("dev-secret-change-me-please-32chars!"),
+  JWT_EXPIRES_IN: Joi.string().default("1h"),
+  REFRESH_EXPIRES_IN_DAYS: Joi.number().integer().positive().default(30),
+  CORS_ORIGIN: Joi.string().default("*"),
+  UPLOAD_DIR: Joi.string().default("uploads"),
+});
+
+const { value, error } = envSchema.validate(process.env, { allowUnknown: true, stripUnknown: true });
+if (error) {
+  throw new Error(`invalid environment configuration: ${error.message}`);
+}
+
+type Env = {
+  NODE_ENV: "development" | "test" | "production";
+  PORT: number;
+  MONGO_URI: string;
+  REDIS_URL: string;
+  JWT_SECRET: string;
+  JWT_EXPIRES_IN: string;
+  REFRESH_EXPIRES_IN_DAYS: number;
+  CORS_ORIGIN: string;
+  UPLOAD_DIR: string;
+};
+
+export const env = value as Env;
