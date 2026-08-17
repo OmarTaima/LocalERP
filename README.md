@@ -1,6 +1,6 @@
-# ERP — Enterprise Multi-Tenant ERP SaaS
+# ERP — Enterprise ERP SaaS (multi-company)
 
-A full-scale, multi-tenant ERP platform with an **accounting engine (double-entry)**, **manufacturing/MRP**, **CRM-lite + quotes**, **real-time infrastructure**, and a **formal, elegant dashboard** built for professional daily use. Built to be e-commerce ready: future landing/storefront sites connect through per-tenant scoped API keys against the same API and database.
+A full-scale, multi-company ERP platform with an **accounting engine (double-entry)**, **manufacturing/MRP**, **CRM-lite + quotes**, **real-time infrastructure**, and a **formal, elegant dashboard** built for professional daily use. Built to be e-commerce ready: future landing/storefront sites connect through per-company scoped API keys against the same API and database.
 
 ```
 ┌───────────────────────────────┐        ┌──────────────────────────────┐
@@ -8,7 +8,7 @@ A full-scale, multi-tenant ERP platform with an **accounting engine (double-entr
 │   App Router · Framer Motion  │◄──────►│   notifications · cron ·     │
 │   SweetAlert2 · Tailwind      │        │   imports/exports · stats    │
 └──────────────┬────────────────┘        └───────────────┬──────────────┘
-               │ REST /api/v1 (JWT + tenant scope)       │ events (Redis)
+               │ REST /api/v1 (JWT + company scope)       │ events (Redis)
 ┌──────────────▼────────────────┐        ┌───────────────▼──────────────┐
 │        backend  Express       │        │      shared  @erp/shared     │
 │   Mongoose · modular monolith │◄──────►│  TS types + zod schemas      │
@@ -24,7 +24,7 @@ A full-scale, multi-tenant ERP platform with an **accounting engine (double-entr
 
 | Module | Capabilities |
 |---|---|
-| Tenancy | Tenant provisioning, plan limits, per-tenant settings (currency, tax rate), full data isolation |
+| Companies | Super-admin provisioning, plan limits, per-company settings (currency, tax rate), full data isolation |
 | Auth & Security | JWT login, granular RBAC roles, 2FA (TOTP), revocable sessions, scoped API keys for e-commerce |
 | Catalog | Products, variants, batches (lot/expiry), barcodes, price lists, tax rules, reorder rules |
 | Inventory | Multi-warehouse, immutable stock ledger, transfers (in-transit), adjustments, low-stock alerts |
@@ -50,7 +50,7 @@ erp/
 
 ## Documentation (read these first)
 
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — full architecture preview: layers, tenancy, events, real-time, scaling
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — full architecture preview: layers, company scoping, events, real-time, scaling
 - [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — every Mongoose model, field, index, and relationship
 - [`docs/API.md`](docs/API.md) — every REST endpoint group, methods, paths, and permissions
 - [`docs/EVENTS.md`](docs/EVENTS.md) — event catalog for the async bus (order.placed, journal.posted, …)
@@ -61,7 +61,7 @@ erp/
 - **Frontend:** Next.js 15 (App Router), React 19, TypeScript (strict), MUI (Material UI), SweetAlert2, Framer Motion, Tailwind CSS
 - **Backend:** Node.js, Express, Mongoose, JWT, WebSockets (ws)
 - **Async:** BullMQ + Redis (queue, cache, pub/sub), cron jobs
-- **Data:** MongoDB 7 (transactions, compound tenant indexes), Redis 7
+- **Data:** MongoDB 7 (transactions, compound company indexes), Redis 7
 - **Tooling:** npm workspaces, `tsx` (dev), TypeScript strict, Docker Compose
 
 ## Getting started
@@ -87,11 +87,12 @@ npm run typecheck
 
 ## API at a glance
 
-Base URL `/api/v1` — JSON responses, errors shaped `{ "error": string }`, JWT bearer auth, tenant isolation enforced by middleware. Full reference in [`docs/API.md`](docs/API.md).
+Base URL `/api/v1` — JSON responses, errors shaped `{ "error": string }`, JWT bearer auth, company isolation enforced by middleware. Full reference in [`docs/API.md`](docs/API.md).
 
 | Group | Examples |
 |---|---|
-| Auth | `POST /auth/login`, `POST /auth/signup`, `POST /auth/2fa/verify`, `DELETE /auth/sessions/:id` |
+| Auth | `POST /auth/login`, `POST /auth/2fa/verify`, `DELETE /auth/sessions/:id` |
+| Platform Admin | `POST /admin/auth/login`, `GET/POST /admin/companies`, `POST /admin/companies/:id/users` |
 | Dashboard | `GET /dashboard/stats?from&to`, `GET /dashboard/approvals`, `GET /dashboard/alerts` |
 | Catalog | `GET/POST /products`, `GET/PATCH /products/:id`, `GET/POST /categories`, `POST /products/:id/stock-adjust` |
 | Inventory | `GET/POST /warehouses`, `POST /warehouses/transfer`, `GET /inventory/low-stock`, `GET /products/:id/movements` |
@@ -108,7 +109,7 @@ Base URL `/api/v1` — JSON responses, errors shaped `{ "error": string }`, JWT 
 - TypeScript strict everywhere; no `any` unless justified
 - `camelCase` variables/functions, `PascalCase` types/components, `kebab-case` files
 - REST, JSON, error shape `{ error: string }`, proper status codes
-- Mongoose schemas with validation; compound indexes starting with `tenantId`
+- Mongoose schemas with validation; compound indexes starting with `companyId`
 - Secrets only in `.env` / `.env.local` — never committed
 - No dead code, no "what" comments, no unused imports
 
@@ -118,5 +119,5 @@ Base URL `/api/v1` — JSON responses, errors shaped `{ "error": string }`, JWT 
 - [ ] Phases 1–9 — backend modules (auth → catalog/inventory → sales → accounting → purchasing/manufacturing → HR → dashboard)
 - [ ] Phase 10 — UI/UX design system polish
 - [ ] Phase 11 — frontend shell + all pages
-- [ ] Phase 12 — integration review, seed demo tenant, done criteria
-- [ ] Post-v1 — e-commerce landing pages over per-tenant API keys, real email, dark mode
+- [ ] Phase 12 — integration review, seed demo company, done criteria
+- [ ] Post-v1 — e-commerce landing pages over per-company API keys, real email, dark mode

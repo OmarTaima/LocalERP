@@ -1,45 +1,39 @@
 import { Router } from "express";
 import { auth } from "../middleware/auth";
 import { rbac } from "../middleware/rbac";
-import { tenant } from "../middleware/tenant";
+import { company } from "../middleware/company";
 import { asyncHandler } from "../utils/async-handler";
 import { AppError } from "../utils/errors";
-import { TenantModel } from "../models";
+import { CompanyModel } from "../models";
+import { serializeCompany } from "../utils/serializers";
 import { writeAudit } from "../services/audit.service";
 
-export const tenantRouter = Router();
+export const companyRouter = Router();
 
-tenantRouter.use(auth, tenant);
+companyRouter.use(auth, company);
 
-tenantRouter.get(
+companyRouter.get(
   "/settings",
-  rbac("tenant:read"),
+  rbac("company:read"),
   asyncHandler(async (req, res) => {
-    const tenantDoc = await TenantModel.findById(req.tenantId).lean();
-    if (!tenantDoc) {
-      throw new AppError(404, "tenant not found");
+    const companyDoc = await CompanyModel.findById(req.companyId).lean();
+    if (!companyDoc) {
+      throw new AppError(404, "company not found");
     }
-    res.json({
-      id: tenantDoc._id.toString(),
-      name: tenantDoc.name,
-      slug: tenantDoc.slug,
-      plan: tenantDoc.plan,
-      settings: tenantDoc.settings,
-      limits: tenantDoc.limits,
-    });
+    res.json(serializeCompany(companyDoc));
   }),
 );
 
-tenantRouter.patch(
+companyRouter.patch(
   "/settings",
-  rbac("tenant:write"),
+  rbac("company:write"),
   asyncHandler(async (req, res) => {
-    const tenantDoc = await TenantModel.findById(req.tenantId);
-    if (!tenantDoc) {
-      throw new AppError(404, "tenant not found");
+    const companyDoc = await CompanyModel.findById(req.companyId);
+    if (!companyDoc) {
+      throw new AppError(404, "company not found");
     }
-    const before = JSON.parse(JSON.stringify(tenantDoc.settings));
-    const settings = tenantDoc.settings;
+    const before = JSON.parse(JSON.stringify(companyDoc.settings));
+    const settings = companyDoc.settings;
     if (typeof req.body.currency === "string" && /^[A-Z]{3}$/.test(req.body.currency)) {
       settings.currency = req.body.currency;
     }
@@ -49,13 +43,13 @@ tenantRouter.patch(
     if (typeof req.body.timezone === "string") {
       settings.timezone = req.body.timezone;
     }
-    await tenantDoc.save();
+    await companyDoc.save();
     await writeAudit({
-      tenantId: req.tenantId,
+      companyId: req.companyId,
       userId: req.userId,
       action: "update",
-      entity: "Tenant",
-      entityId: tenantDoc._id.toString(),
+      entity: "Company",
+      entityId: companyDoc._id.toString(),
       before: { settings: before },
       after: { settings: settings },
       ip: req.ip,

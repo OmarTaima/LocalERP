@@ -1,7 +1,7 @@
-import type { ID, Money, TenantScoped, Timestamps } from "./common";
+import type { ID, Money, CompanyScoped, Timestamps } from "./common";
 
 export type Expense = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     description: string;
     amount: Money;
@@ -22,7 +22,7 @@ export type ClaimItem = {
 };
 
 export type ExpenseClaim = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     userId: ID;
     items: ClaimItem[];
@@ -32,7 +32,7 @@ export type ExpenseClaim = Timestamps &
   };
 
 export type ExchangeRate = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     fromCurrency: string;
     toCurrency: string;

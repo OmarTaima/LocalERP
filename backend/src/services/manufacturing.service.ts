@@ -22,8 +22,8 @@ import {
   type WorkOrderDoc,
 } from "../models";
 
-export async function listBoms(tenantId: string) {
-  const docs = await BomModel.find({ tenantId }).sort({ createdAt: -1 }).lean();
+export async function listBoms(companyId: string) {
+  const docs = await BomModel.find({ companyId }).sort({ createdAt: -1 }).lean();
   return Promise.all(docs.map(async (doc) => ({ ...serializeBom(doc), productName: (await ProductModel.findById(doc.productId).lean())?.name ?? "unknown" })));
 }
 
@@ -38,32 +38,32 @@ function serializeBom(doc: BomDoc) {
   };
 }
 
-export async function createBom(tenantId: string, userId: string, input: { productId: string; components: Array<{ productId: string; quantity: number }>; outputQuantity: number }) {
-  const product = await ProductModel.findOne({ _id: input.productId, tenantId });
+export async function createBom(companyId: string, userId: string, input: { productId: string; components: Array<{ productId: string; quantity: number }>; outputQuantity: number }) {
+  const product = await ProductModel.findOne({ _id: input.productId, companyId });
   if (!product) throw new AppError(400, "finished-good product does not exist");
   for (const component of input.components) {
-    const existing = await ProductModel.findOne({ _id: component.productId, tenantId });
+    const existing = await ProductModel.findOne({ _id: component.productId, companyId });
     if (!existing) throw new AppError(400, `component product ${component.productId} does not exist`);
   }
-  const existingBom = await BomModel.findOne({ tenantId, productId: input.productId });
+  const existingBom = await BomModel.findOne({ companyId, productId: input.productId });
   if (existingBom) throw new AppError(409, "a BOM already exists for this product");
   const doc = await BomModel.create({
-    tenantId,
+    companyId,
     productId: input.productId,
     components: input.components,
     outputQuantity: input.outputQuantity,
     version: 1,
   });
-  await writeAudit({ tenantId, userId, action: "create", entity: "Bom", entityId: doc._id.toString(), after: { productId: doc.productId.toString(), components: doc.components.length } });
+  await writeAudit({ companyId, userId, action: "create", entity: "Bom", entityId: doc._id.toString(), after: { productId: doc.productId.toString(), components: doc.components.length } });
   return serializeBom(doc);
 }
 
-export async function updateBom(tenantId: string, userId: string, bomId: string, input: { components?: Array<{ productId: string; quantity: number }>; outputQuantity?: number }) {
-  const doc = await BomModel.findOne({ _id: bomId, tenantId });
+export async function updateBom(companyId: string, userId: string, bomId: string, input: { components?: Array<{ productId: string; quantity: number }>; outputQuantity?: number }) {
+  const doc = await BomModel.findOne({ _id: bomId, companyId });
   if (!doc) throw new AppError(404, "bom not found");
   if (input.components) {
     for (const component of input.components) {
-      const existing = await ProductModel.findOne({ _id: component.productId, tenantId });
+      const existing = await ProductModel.findOne({ _id: component.productId, companyId });
       if (!existing) throw new AppError(400, `component product ${component.productId} does not exist`);
     }
     doc.components = input.components;
@@ -71,21 +71,21 @@ export async function updateBom(tenantId: string, userId: string, bomId: string,
   if (input.outputQuantity !== undefined) doc.outputQuantity = input.outputQuantity;
   doc.version += 1;
   await doc.save();
-  await writeAudit({ tenantId, userId, action: "update", entity: "Bom", entityId: bomId, after: { components: doc.components.length, version: doc.version } });
+  await writeAudit({ companyId, userId, action: "update", entity: "Bom", entityId: bomId, after: { components: doc.components.length, version: doc.version } });
   return serializeBom(doc);
 }
 
-export async function deleteBom(tenantId: string, userId: string, bomId: string): Promise<void> {
-  const doc = await BomModel.findOne({ _id: bomId, tenantId });
+export async function deleteBom(companyId: string, userId: string, bomId: string): Promise<void> {
+  const doc = await BomModel.findOne({ _id: bomId, companyId });
   if (!doc) throw new AppError(404, "bom not found");
-  const activeOrders = await WorkOrderModel.countDocuments({ tenantId, bomId: doc._id, status: { $in: ["draft", "released", "in-progress"] } });
+  const activeOrders = await WorkOrderModel.countDocuments({ companyId, bomId: doc._id, status: { $in: ["draft", "released", "in-progress"] } });
   if (activeOrders > 0) throw new AppError(400, "bom has active work orders");
-  await writeAudit({ tenantId, userId, action: "delete", entity: "Bom", entityId: bomId, before: { productId: doc.productId.toString() } });
+  await writeAudit({ companyId, userId, action: "delete", entity: "Bom", entityId: bomId, before: { productId: doc.productId.toString() } });
   await doc.deleteOne();
 }
 
-export async function listWorkCenters(tenantId: string) {
-  const docs = await WorkCenterModel.find({ tenantId }).sort({ name: 1 }).lean();
+export async function listWorkCenters(companyId: string) {
+  const docs = await WorkCenterModel.find({ companyId }).sort({ name: 1 }).lean();
   return docs.map(serializeWorkCenter);
 }
 
@@ -100,32 +100,32 @@ function serializeWorkCenter(doc: WorkCenterDoc) {
   };
 }
 
-export async function createWorkCenter(tenantId: string, userId: string, input: { name: string; costPerHour: number; capacity: number }) {
-  const doc = await WorkCenterModel.create({ tenantId, ...input, isActive: true });
-  await writeAudit({ tenantId, userId, action: "create", entity: "WorkCenter", entityId: doc._id.toString(), after: { name: doc.name, costPerHour: doc.costPerHour } });
+export async function createWorkCenter(companyId: string, userId: string, input: { name: string; costPerHour: number; capacity: number }) {
+  const doc = await WorkCenterModel.create({ companyId, ...input, isActive: true });
+  await writeAudit({ companyId, userId, action: "create", entity: "WorkCenter", entityId: doc._id.toString(), after: { name: doc.name, costPerHour: doc.costPerHour } });
   return serializeWorkCenter(doc);
 }
 
-export async function updateWorkCenter(tenantId: string, userId: string, workCenterId: string, input: Record<string, unknown>) {
-  const doc = await WorkCenterModel.findOne({ _id: workCenterId, tenantId });
+export async function updateWorkCenter(companyId: string, userId: string, workCenterId: string, input: Record<string, unknown>) {
+  const doc = await WorkCenterModel.findOne({ _id: workCenterId, companyId });
   if (!doc) throw new AppError(404, "work center not found");
   const before = { name: doc.name, isActive: doc.isActive };
   for (const [key, value] of Object.entries(input)) {
     (doc as unknown as Record<string, unknown>)[key] = value;
   }
   await doc.save();
-  await writeAudit({ tenantId, userId, action: "update", entity: "WorkCenter", entityId: workCenterId, before, after: { name: doc.name } });
+  await writeAudit({ companyId, userId, action: "update", entity: "WorkCenter", entityId: workCenterId, before, after: { name: doc.name } });
   return serializeWorkCenter(doc);
 }
 
-export async function createWorkOrder(tenantId: string, userId: string, input: { bomId: string; quantity: number; workCenterId: string; plannedHours: number }) {
-  const bom = await BomModel.findOne({ _id: input.bomId, tenantId });
+export async function createWorkOrder(companyId: string, userId: string, input: { bomId: string; quantity: number; workCenterId: string; plannedHours: number }) {
+  const bom = await BomModel.findOne({ _id: input.bomId, companyId });
   if (!bom) throw new AppError(404, "bom not found");
-  const workCenter = await WorkCenterModel.findOne({ _id: input.workCenterId, tenantId, isActive: true });
+  const workCenter = await WorkCenterModel.findOne({ _id: input.workCenterId, companyId, isActive: true });
   if (!workCenter) throw new AppError(400, "work center does not exist or is inactive");
   const doc = await WorkOrderModel.create({
-    tenantId,
-    woNumber: await nextNumber(tenantId, "wo", "WO"),
+    companyId,
+    woNumber: await nextNumber(companyId, "wo", "WO"),
     bomId: bom._id,
     productId: bom.productId,
     quantity: input.quantity,
@@ -136,8 +136,8 @@ export async function createWorkOrder(tenantId: string, userId: string, input: {
     finishedGoods: [],
     unitCost: 0,
   });
-  await writeAudit({ tenantId, userId, action: "create", entity: "WorkOrder", entityId: doc._id.toString(), after: { woNumber: doc.woNumber, quantity: doc.quantity } });
-  publish({ type: "manufacturing.wo.created", payload: { tenantId, workOrderId: doc._id.toString(), woNumber: doc.woNumber } });
+  await writeAudit({ companyId, userId, action: "create", entity: "WorkOrder", entityId: doc._id.toString(), after: { woNumber: doc.woNumber, quantity: doc.quantity } });
+  publish({ type: "manufacturing.wo.created", payload: { companyId, workOrderId: doc._id.toString(), woNumber: doc.woNumber } });
   return serializeWorkOrder(doc);
 }
 
@@ -160,10 +160,10 @@ function serializeWorkOrder(doc: WorkOrderDoc) {
   };
 }
 
-export async function listWorkOrders(tenantId: string, query: { status?: string; productId?: string; page?: number; pageSize?: number }) {
+export async function listWorkOrders(companyId: string, query: { status?: string; productId?: string; page?: number; pageSize?: number }) {
   const page = Math.max(1, query.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
-  const filter: Record<string, unknown> = { tenantId };
+  const filter: Record<string, unknown> = { companyId };
   if (query.status) filter.status = query.status;
   if (query.productId) filter.productId = query.productId;
   const [docs, total] = await Promise.all([
@@ -177,55 +177,55 @@ export async function listWorkOrders(tenantId: string, query: { status?: string;
   return { items: docs.map(serializeWorkOrder), total, page, pageSize };
 }
 
-export async function getWorkOrder(tenantId: string, workOrderId: string) {
-  const doc = await WorkOrderModel.findOne({ _id: workOrderId, tenantId });
+export async function getWorkOrder(companyId: string, workOrderId: string) {
+  const doc = await WorkOrderModel.findOne({ _id: workOrderId, companyId });
   if (!doc) throw new AppError(404, "work order not found");
   return serializeWorkOrder(doc);
 }
 
-export async function startWorkOrder(tenantId: string, userId: string, workOrderId: string) {
-  const doc = await WorkOrderModel.findOne({ _id: workOrderId, tenantId });
+export async function startWorkOrder(companyId: string, userId: string, workOrderId: string) {
+  const doc = await WorkOrderModel.findOne({ _id: workOrderId, companyId });
   if (!doc) throw new AppError(404, "work order not found");
   if (doc.status !== "draft" && doc.status !== "released") throw new AppError(400, `work order cannot be started in ${doc.status} state`);
-  const bom = await BomModel.findOne({ _id: doc.bomId, tenantId });
+  const bom = await BomModel.findOne({ _id: doc.bomId, companyId });
   if (!bom) throw new AppError(400, "bom no longer exists");
-  const warehouse = await WarehouseModel.findOne({ tenantId, isDefault: true });
+  const warehouse = await WarehouseModel.findOne({ companyId, isDefault: true });
   if (!warehouse) throw new AppError(400, "no default warehouse for material consumption");
   const scale = doc.quantity / bom.outputQuantity;
   const consumed: Array<{ productId: string; quantity: number }> = [];
   for (const component of bom.components) {
     const needed = component.quantity * scale;
-    const inventory = await InventoryModel.findOne({ tenantId, productId: component.productId, warehouseId: warehouse._id });
+    const inventory = await InventoryModel.findOne({ companyId, productId: component.productId, warehouseId: warehouse._id });
     if (!inventory || inventory.quantity < needed) {
       throw new AppError(400, `insufficient material stock for component ${component.productId} (need ${needed})`);
     }
     consumed.push({ productId: component.productId.toString(), quantity: needed });
   }
   for (const item of consumed) {
-    await moveStock(tenantId, userId, item.productId, warehouse._id.toString(), -item.quantity, "consumed", doc._id.toString(), `work order ${doc.woNumber}`);
+    await moveStock(companyId, userId, item.productId, warehouse._id.toString(), -item.quantity, "consumed", doc._id.toString(), `work order ${doc.woNumber}`);
   }
   doc.materialConsumed = consumed;
   doc.status = "in-progress";
   doc.startedAt = new Date();
   await doc.save();
-  await writeAudit({ tenantId, userId, action: "update", entity: "WorkOrder", entityId: workOrderId, after: { woNumber: doc.woNumber, status: "in-progress", materials: consumed } });
-  publish({ type: "manufacturing.wo.started", payload: { tenantId, workOrderId, woNumber: doc.woNumber } });
+  await writeAudit({ companyId, userId, action: "update", entity: "WorkOrder", entityId: workOrderId, after: { woNumber: doc.woNumber, status: "in-progress", materials: consumed } });
+  publish({ type: "manufacturing.wo.started", payload: { companyId, workOrderId, woNumber: doc.woNumber } });
   return serializeWorkOrder(doc);
 }
 
-export async function completeWorkOrder(tenantId: string, userId: string, workOrderId: string) {
-  const doc = await WorkOrderModel.findOne({ _id: workOrderId, tenantId });
+export async function completeWorkOrder(companyId: string, userId: string, workOrderId: string) {
+  const doc = await WorkOrderModel.findOne({ _id: workOrderId, companyId });
   if (!doc) throw new AppError(404, "work order not found");
   if (doc.status !== "in-progress") throw new AppError(400, `work order must be in progress before completion (currently ${doc.status})`);
-  const bom = await BomModel.findOne({ _id: doc.bomId, tenantId });
+  const bom = await BomModel.findOne({ _id: doc.bomId, companyId });
   if (!bom) throw new AppError(400, "bom no longer exists");
-  const workCenter = await WorkCenterModel.findOne({ _id: doc.workCenterId, tenantId });
-  const warehouse = await WarehouseModel.findOne({ tenantId, isDefault: true });
+  const workCenter = await WorkCenterModel.findOne({ _id: doc.workCenterId, companyId });
+  const warehouse = await WarehouseModel.findOne({ companyId, isDefault: true });
   if (!warehouse) throw new AppError(400, "no default warehouse for finished goods");
 
   const finished = Math.round(doc.quantity / bom.outputQuantity) * bom.outputQuantity || doc.quantity;
   const batch = await BatchModel.create({
-    tenantId,
+    companyId,
     productId: doc.productId,
     lotNumber: `${doc.woNumber}-FG`,
     expiryDate: null,
@@ -233,9 +233,9 @@ export async function completeWorkOrder(tenantId: string, userId: string, workOr
     supplierId: null,
     receivedAt: new Date(),
   });
-  await moveStock(tenantId, userId, doc.productId.toString(), warehouse._id.toString(), finished, "produced", doc._id.toString(), `work order ${doc.woNumber}`, batch._id.toString());
+  await moveStock(companyId, userId, doc.productId.toString(), warehouse._id.toString(), finished, "produced", doc._id.toString(), `work order ${doc.woNumber}`, batch._id.toString());
 
-  const consumedCost = await computeConsumedCost(tenantId, doc.materialConsumed);
+  const consumedCost = await computeConsumedCost(companyId, doc.materialConsumed);
   const laborCost = (workCenter?.costPerHour ?? 0) * doc.plannedHours;
   const unitCost = round2((consumedCost + laborCost) / finished);
   doc.finishedGoods = [{ batchId: batch._id.toString(), quantity: finished }];
@@ -243,36 +243,36 @@ export async function completeWorkOrder(tenantId: string, userId: string, workOr
   doc.status = "completed";
   doc.completedAt = new Date();
   await doc.save();
-  await postWorkOrderJournal(tenantId, userId, doc, consumedCost);
+  await postWorkOrderJournal(companyId, userId, doc, consumedCost);
   await writeAudit({
-    tenantId,
+    companyId,
     userId,
     action: "update",
     entity: "WorkOrder",
     entityId: workOrderId,
     after: { woNumber: doc.woNumber, status: "completed", quantity: finished, unitCost },
   });
-  publish({ type: "manufacturing.wo.completed", payload: { tenantId, workOrderId, woNumber: doc.woNumber, quantity: finished, unitCost } });
+  publish({ type: "manufacturing.wo.completed", payload: { companyId, workOrderId, woNumber: doc.woNumber, quantity: finished, unitCost } });
   return { ...serializeWorkOrder(doc), finishedQuantity: finished };
 }
 
-async function computeConsumedCost(tenantId: string, consumed: WorkOrderDoc["materialConsumed"]): Promise<number> {
+async function computeConsumedCost(companyId: string, consumed: WorkOrderDoc["materialConsumed"]): Promise<number> {
   const productIds = consumed.map((item) => item.productId);
-  const products = await ProductModel.find({ _id: { $in: productIds }, tenantId }).lean();
+  const products = await ProductModel.find({ _id: { $in: productIds }, companyId }).lean();
   const costMap = new Map(products.map((product) => [product._id.toString(), product.cost]));
   return consumed.reduce((sum, item) => sum + item.quantity * (costMap.get(item.productId.toString()) ?? 0), 0);
 }
 
-async function postWorkOrderJournal(tenantId: string, userId: string, wo: WorkOrderDoc, consumedCost: number) {
-  const inventoryAccount = await AccountModel.findOne({ tenantId, code: "1200" });
-  const expenseAccount = await AccountModel.findOne({ tenantId, code: "5100" });
-  const workCenter = await WorkCenterModel.findOne({ _id: wo.workCenterId, tenantId });
+async function postWorkOrderJournal(companyId: string, userId: string, wo: WorkOrderDoc, consumedCost: number) {
+  const inventoryAccount = await AccountModel.findOne({ companyId, code: "1200" });
+  const expenseAccount = await AccountModel.findOne({ companyId, code: "5100" });
+  const workCenter = await WorkCenterModel.findOne({ _id: wo.workCenterId, companyId });
   const laborCost = (workCenter?.costPerHour ?? 0) * wo.plannedHours;
   if (!inventoryAccount || !expenseAccount) return null;
   const finishedValue = wo.unitCost * wo.finishedGoods.reduce((sum, item) => sum + item.quantity, 0);
   const doc = await JournalEntryModel.create({
-    tenantId,
-    entryNumber: await nextNumber(tenantId, "journal", "JE"),
+    companyId,
+    entryNumber: await nextNumber(companyId, "journal", "JE"),
     date: new Date(),
     description: `Work order completion ${wo.woNumber}`,
     reference: { type: "work-order", id: wo._id.toString() },
@@ -288,29 +288,29 @@ async function postWorkOrderJournal(tenantId: string, userId: string, wo: WorkOr
   return { id: doc._id.toString(), entryNumber: doc.entryNumber };
 }
 
-export async function cancelWorkOrder(tenantId: string, userId: string, workOrderId: string) {
-  const doc = await WorkOrderModel.findOne({ _id: workOrderId, tenantId });
+export async function cancelWorkOrder(companyId: string, userId: string, workOrderId: string) {
+  const doc = await WorkOrderModel.findOne({ _id: workOrderId, companyId });
   if (!doc) throw new AppError(404, "work order not found");
   if (doc.status !== "draft" && doc.status !== "released") throw new AppError(400, `work order cannot be cancelled in ${doc.status} state`);
   doc.status = "cancelled";
   await doc.save();
-  await writeAudit({ tenantId, userId, action: "update", entity: "WorkOrder", entityId: workOrderId, after: { woNumber: doc.woNumber, status: "cancelled" } });
+  await writeAudit({ companyId, userId, action: "update", entity: "WorkOrder", entityId: workOrderId, after: { woNumber: doc.woNumber, status: "cancelled" } });
   return serializeWorkOrder(doc);
 }
 
-export async function generateMrpSuggestions(tenantId: string): Promise<number> {
-  const rules = await ReorderRuleModel.find({ tenantId, enabled: true }).lean();
+export async function generateMrpSuggestions(companyId: string): Promise<number> {
+  const rules = await ReorderRuleModel.find({ companyId, enabled: true }).lean();
   let created = 0;
   for (const rule of rules) {
-    const inventory = await InventoryModel.findOne({ tenantId, productId: rule.productId, warehouseId: rule.warehouseId }).lean();
+    const inventory = await InventoryModel.findOne({ companyId, productId: rule.productId, warehouseId: rule.warehouseId }).lean();
     const current = inventory?.quantity ?? 0;
     if (current >= rule.minQuantity) continue;
-    const openSuggestion = await MrpSuggestionModel.exists({ tenantId, productId: rule.productId, warehouseId: rule.warehouseId, status: "open" });
+    const openSuggestion = await MrpSuggestionModel.exists({ companyId, productId: rule.productId, warehouseId: rule.warehouseId, status: "open" });
     if (openSuggestion) continue;
-    const bom = await BomModel.findOne({ tenantId, productId: rule.productId }).lean();
+    const bom = await BomModel.findOne({ companyId, productId: rule.productId }).lean();
     const type = bom ? "produce" : "purchase";
     await MrpSuggestionModel.create({
-      tenantId,
+      companyId,
       productId: rule.productId,
       warehouseId: rule.warehouseId,
       type,
@@ -320,14 +320,14 @@ export async function generateMrpSuggestions(tenantId: string): Promise<number> 
     });
     created++;
   }
-  if (created > 0) publish({ type: "mrp.suggestions.generated", payload: { tenantId, count: created } });
+  if (created > 0) publish({ type: "mrp.suggestions.generated", payload: { companyId, count: created } });
   return created;
 }
 
-export async function listMrpSuggestions(tenantId: string, query: { status?: string; page?: number; pageSize?: number }) {
+export async function listMrpSuggestions(companyId: string, query: { status?: string; page?: number; pageSize?: number }) {
   const page = Math.max(1, query.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
-  const filter: Record<string, unknown> = { tenantId };
+  const filter: Record<string, unknown> = { companyId };
   if (query.status) filter.status = query.status;
   const [docs, total] = await Promise.all([
     MrpSuggestionModel.find(filter)
@@ -359,18 +359,18 @@ export async function listMrpSuggestions(tenantId: string, query: { status?: str
   };
 }
 
-export async function actionMrpSuggestion(tenantId: string, userId: string, suggestionId: string, status: "actioned" | "dismissed") {
-  const doc = await MrpSuggestionModel.findOne({ _id: suggestionId, tenantId });
+export async function actionMrpSuggestion(companyId: string, userId: string, suggestionId: string, status: "actioned" | "dismissed") {
+  const doc = await MrpSuggestionModel.findOne({ _id: suggestionId, companyId });
   if (!doc) throw new AppError(404, "suggestion not found");
   if (doc.status !== "open") throw new AppError(400, "suggestion already processed");
   let createdDoc: { id: string; number: string } | null = null;
   if (status === "actioned") {
     if (doc.type === "purchase") {
-      const supplier = await SupplierModel.findOne({ tenantId, isActive: true }).lean();
+      const supplier = await SupplierModel.findOne({ companyId, isActive: true }).lean();
       if (!supplier) throw new AppError(400, "no active supplier to action a purchase suggestion");
       const po = await PurchaseOrderModel.create({
-        tenantId,
-        poNumber: await nextNumber(tenantId, "po", "PO"),
+        companyId,
+        poNumber: await nextNumber(companyId, "po", "PO"),
         supplierId: supplier._id,
         items: [{ productId: doc.productId, quantity: doc.suggestedQuantity, unitCost: (await ProductModel.findById(doc.productId).lean())?.cost ?? 0 }],
         expectedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -381,13 +381,13 @@ export async function actionMrpSuggestion(tenantId: string, userId: string, sugg
       });
       createdDoc = { id: po._id.toString(), number: po.poNumber };
     } else {
-      const bom = await BomModel.findOne({ tenantId, productId: doc.productId });
+      const bom = await BomModel.findOne({ companyId, productId: doc.productId });
       if (!bom) throw new AppError(400, "no BOM to action a produce suggestion");
-      const workCenter = await WorkCenterModel.findOne({ tenantId, isActive: true }).lean();
+      const workCenter = await WorkCenterModel.findOne({ companyId, isActive: true }).lean();
       if (!workCenter) throw new AppError(400, "no active work center to action a produce suggestion");
       const wo = await WorkOrderModel.create({
-        tenantId,
-        woNumber: await nextNumber(tenantId, "wo", "WO"),
+        companyId,
+        woNumber: await nextNumber(companyId, "wo", "WO"),
         bomId: bom._id,
         productId: doc.productId,
         quantity: doc.suggestedQuantity,
@@ -403,7 +403,7 @@ export async function actionMrpSuggestion(tenantId: string, userId: string, sugg
   }
   doc.status = status;
   await doc.save();
-  await writeAudit({ tenantId, userId, action: "update", entity: "MrpSuggestion", entityId: suggestionId, after: { status: doc.status } });
+  await writeAudit({ companyId, userId, action: "update", entity: "MrpSuggestion", entityId: suggestionId, after: { status: doc.status } });
   return { id: doc._id.toString(), status: doc.status, type: doc.type, created: createdDoc };
 }
 

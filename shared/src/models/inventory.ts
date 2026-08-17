@@ -1,7 +1,7 @@
-import type { ID, TenantScoped, Timestamps } from "./common";
+import type { ID, CompanyScoped, Timestamps } from "./common";
 
 export type Warehouse = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     name: string;
     address: string;
@@ -10,7 +10,7 @@ export type Warehouse = Timestamps &
   };
 
 export type Inventory = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     productId: ID;
     warehouseId: ID;
@@ -30,7 +30,7 @@ export const MOVEMENT_TYPES = [
 export type MovementType = (typeof MOVEMENT_TYPES)[number];
 
 export type StockMovement = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     productId: ID;
     warehouseId: ID;
@@ -52,7 +52,7 @@ export type TransferItem = {
 };
 
 export type Transfer = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     fromWarehouseId: ID;
     toWarehouseId: ID;

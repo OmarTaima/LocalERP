@@ -28,16 +28,16 @@ import {
 
 const PAID_ORDER_STATUSES = ["paid", "fulfilled", "shipped", "delivered"];
 
-export async function dashboardStats(tenantId: string, query: { from?: string; to?: string }) {
+export async function dashboardStats(companyId: string, query: { from?: string; to?: string }) {
   const from = query.from ? new Date(query.from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const to = query.to ? new Date(query.to) : new Date();
 
   const [orders, products, inventory, batches, approvals] = await Promise.all([
-    SalesOrderModel.find({ tenantId, createdAt: { $gte: from, $lte: to } }).lean(),
-    ProductModel.find({ tenantId }).lean(),
-    InventoryModel.find({ tenantId }).lean(),
-    BatchModel.find({ tenantId, quantity: { $gt: 0 }, expiryDate: { $ne: null, $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } }).lean(),
-    ApprovalRequestModel.countDocuments({ tenantId, status: "pending" }),
+    SalesOrderModel.find({ companyId, createdAt: { $gte: from, $lte: to } }).lean(),
+    ProductModel.find({ companyId }).lean(),
+    InventoryModel.find({ companyId }).lean(),
+    BatchModel.find({ companyId, quantity: { $gt: 0 }, expiryDate: { $ne: null, $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } }).lean(),
+    ApprovalRequestModel.countDocuments({ companyId, status: "pending" }),
   ]);
 
   const paidOrders = orders.filter((order) => PAID_ORDER_STATUSES.includes(order.status));
@@ -85,8 +85,8 @@ export async function dashboardStats(tenantId: string, query: { from?: string; t
   };
 }
 
-export async function dashboardApprovals(tenantId: string) {
-  const docs = await ApprovalRequestModel.find({ tenantId, status: "pending" }).sort({ createdAt: -1 }).limit(20).lean();
+export async function dashboardApprovals(companyId: string) {
+  const docs = await ApprovalRequestModel.find({ companyId, status: "pending" }).sort({ createdAt: -1 }).limit(20).lean();
   return {
     items: docs.map((doc) => ({
       id: doc._id.toString(),
@@ -101,14 +101,14 @@ export async function dashboardApprovals(tenantId: string) {
   };
 }
 
-export async function dashboardAlerts(tenantId: string) {
+export async function dashboardAlerts(companyId: string) {
   const [products, inventory, batches, orders, customers, payments] = await Promise.all([
-    ProductModel.find({ tenantId, isActive: true }).lean(),
-    InventoryModel.find({ tenantId }).lean(),
-    BatchModel.find({ tenantId, quantity: { $gt: 0 }, expiryDate: { $ne: null, $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } }).lean(),
-    SalesOrderModel.find({ tenantId, status: { $in: ["confirmed", "shipped"] } }).lean(),
-    CustomerModel.find({ tenantId }).lean(),
-    PaymentModel.find({ tenantId, status: "captured" }).lean(),
+    ProductModel.find({ companyId, isActive: true }).lean(),
+    InventoryModel.find({ companyId }).lean(),
+    BatchModel.find({ companyId, quantity: { $gt: 0 }, expiryDate: { $ne: null, $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } }).lean(),
+    SalesOrderModel.find({ companyId, status: { $in: ["confirmed", "shipped"] } }).lean(),
+    CustomerModel.find({ companyId }).lean(),
+    PaymentModel.find({ companyId, status: "captured" }).lean(),
   ]);
 
   const paidByOrder = new Map<string, number>();
@@ -156,7 +156,7 @@ function parseCsv(text: string): string[][] {
     .map((line) => line.split(",").map((cell) => cell.trim()));
 }
 
-async function processImport(tenantId: string, userId: string, type: ImportJobDoc["type"], rows: string[][], errors: string[]) {
+async function processImport(companyId: string, userId: string, type: ImportJobDoc["type"], rows: string[][], errors: string[]) {
   let processed = 0;
   const header = rows[0].map((cell) => cell.toLowerCase());
   const col = (name: string) => header.indexOf(name);
@@ -165,7 +165,7 @@ async function processImport(tenantId: string, userId: string, type: ImportJobDo
     const at = (name: string) => row[col(name)]?.trim() ?? "";
     try {
       if (type === "products") {
-        await createProduct(tenantId, userId, {
+        await createProduct(companyId, userId, {
           sku: at("sku"),
           name: at("name"),
           price: Number(at("price")),
@@ -173,11 +173,11 @@ async function processImport(tenantId: string, userId: string, type: ImportJobDo
           isActive: true,
         });
       } else if (type === "customers") {
-        await createCustomer(tenantId, userId, { name: at("name"), email: at("email"), phone: at("phone"), address: { label: at("label"), street: at("street"), city: at("city"), country: at("country") } });
+        await createCustomer(companyId, userId, { name: at("name"), email: at("email"), phone: at("phone"), address: { label: at("label"), street: at("street"), city: at("city"), country: at("country") } });
       } else if (type === "employees") {
-        const department = await DepartmentModel.findOne({ tenantId, name: { $regex: `^${at("department")}$`, $options: "i" } }).lean();
+        const department = await DepartmentModel.findOne({ companyId, name: { $regex: `^${at("department")}$`, $options: "i" } }).lean();
         if (!department) throw new Error(`department "${at("department")}" not found`);
-        await createEmployee(tenantId, userId, {
+        await createEmployee(companyId, userId, {
           name: at("name"),
           email: at("email"),
           position: at("position"),
@@ -186,7 +186,7 @@ async function processImport(tenantId: string, userId: string, type: ImportJobDo
           departmentId: department._id.toString(),
         });
       } else if (type === "orders") {
-        const customer = await CustomerModel.findOne({ tenantId, email: at("customeremail") }).lean();
+        const customer = await CustomerModel.findOne({ companyId, email: at("customeremail") }).lean();
         if (!customer) throw new Error(`customer "${at("customeremail")}" not found`);
         const items = at("items")
           .split(";")
@@ -198,11 +198,11 @@ async function processImport(tenantId: string, userId: string, type: ImportJobDo
         if (items.length === 0) throw new Error("no items in order row");
         const resolved = [];
         for (const item of items) {
-          const product = await ProductModel.findOne({ tenantId, sku: item.sku }).lean();
+          const product = await ProductModel.findOne({ companyId, sku: item.sku }).lean();
           if (!product) throw new Error(`product "${item.sku}" not found`);
           resolved.push({ productId: product._id.toString(), quantity: item.quantity });
         }
-        await createSalesOrder(tenantId, userId, {
+        await createSalesOrder(companyId, userId, {
           customerId: customer._id.toString(),
           items: resolved,
           shippingAddress: { label: "import", street: "import", city: "import", country: "import" },
@@ -217,9 +217,9 @@ async function processImport(tenantId: string, userId: string, type: ImportJobDo
   return processed;
 }
 
-export async function queueImportJob(tenantId: string, userId: string, input: { type: ImportJobDoc["type"]; data: string }) {
+export async function queueImportJob(companyId: string, userId: string, input: { type: ImportJobDoc["type"]; data: string }) {
   const job = await ImportJobModel.create({
-    tenantId,
+    companyId,
     type: input.type,
     fileUrl: `inline://${input.type}`,
     status: "queued",
@@ -233,15 +233,15 @@ export async function queueImportJob(tenantId: string, userId: string, input: { 
   try {
     const rows = parseCsv(input.data);
     if (rows.length < 2) throw new AppError(400, "import file must contain a header row and at least one data row");
-    processed = await processImport(tenantId, userId, input.type, rows, errors);
+    processed = await processImport(companyId, userId, input.type, rows, errors);
   } catch (err) {
     errors.push(err instanceof Error ? err.message : String(err));
   }
   job.status = errors.length === 0 && processed > 0 ? "done" : errors.length > 0 && processed === 0 ? "failed" : "done";
   job.result = { processed, failed: errors.length, errors };
   await job.save();
-  await writeAudit({ tenantId, userId, action: "create", entity: "ImportJob", entityId: job._id.toString(), after: { type: input.type, processed, failed: errors.length } });
-  publish({ type: "import.completed", payload: { tenantId, jobId: job._id.toString(), result: job.result } });
+  await writeAudit({ companyId, userId, action: "create", entity: "ImportJob", entityId: job._id.toString(), after: { type: input.type, processed, failed: errors.length } });
+  publish({ type: "import.completed", payload: { companyId, jobId: job._id.toString(), result: job.result } });
   return {
     id: job._id.toString(),
     type: job.type,
@@ -250,8 +250,8 @@ export async function queueImportJob(tenantId: string, userId: string, input: { 
   };
 }
 
-export async function getImportJob(tenantId: string, jobId: string) {
-  const job = await ImportJobModel.findOne({ _id: jobId, tenantId }).lean();
+export async function getImportJob(companyId: string, jobId: string) {
+  const job = await ImportJobModel.findOne({ _id: jobId, companyId }).lean();
   if (!job) throw new AppError(404, "import job not found");
   return {
     id: job._id.toString(),
@@ -262,9 +262,9 @@ export async function getImportJob(tenantId: string, jobId: string) {
   };
 }
 
-export async function queueExportJob(tenantId: string, userId: string, input: { type: ExportJobDoc["type"]; from?: string; to?: string }) {
+export async function queueExportJob(companyId: string, userId: string, input: { type: ExportJobDoc["type"]; from?: string; to?: string }) {
   const job = await ExportJobModel.create({
-    tenantId,
+    companyId,
     type: input.type,
     status: "processing",
     fileUrl: null,
@@ -274,13 +274,13 @@ export async function queueExportJob(tenantId: string, userId: string, input: { 
 
   let rows: string[][] = [];
   if (input.type === "products") {
-    const docs = await ProductModel.find({ tenantId }).sort({ sku: 1 }).lean();
+    const docs = await ProductModel.find({ companyId }).sort({ sku: 1 }).lean();
     rows = [["id", "sku", "name", "price", "cost", "isActive"], ...docs.map((doc) => [doc._id.toString(), doc.sku, doc.name, String(doc.price), String(doc.cost), String(doc.isActive)])];
   } else if (input.type === "customers") {
-    const docs = await CustomerModel.find({ tenantId }).sort({ name: 1 }).lean();
+    const docs = await CustomerModel.find({ companyId }).sort({ name: 1 }).lean();
     rows = [["id", "name", "email", "phone"], ...docs.map((doc) => [doc._id.toString(), doc.name, doc.email, doc.phone])];
   } else if (input.type === "orders") {
-    const filter: Record<string, unknown> = { tenantId };
+    const filter: Record<string, unknown> = { companyId };
     if (input.from || input.to) {
       filter.createdAt = {
         ...(input.from ? { $gte: new Date(input.from) } : {}),
@@ -290,7 +290,7 @@ export async function queueExportJob(tenantId: string, userId: string, input: { 
     const docs = await SalesOrderModel.find(filter).sort({ createdAt: -1 }).lean();
     rows = [["id", "orderNumber", "customerId", "total", "status"], ...docs.map((doc) => [doc._id.toString(), doc.orderNumber, doc.customerId.toString(), String(doc.totals.total), doc.status])];
   } else {
-    const docs = await EmployeeModel.find({ tenantId }).sort({ name: 1 }).lean();
+    const docs = await EmployeeModel.find({ companyId }).sort({ name: 1 }).lean();
     rows = [["id", "name", "email", "position", "status"], ...docs.map((doc) => [doc._id.toString(), doc.name, doc.email, doc.position, doc.status])];
   }
 
@@ -298,8 +298,8 @@ export async function queueExportJob(tenantId: string, userId: string, input: { 
   job.status = "done";
   job.fileUrl = `erp-export://${input.type}-${job._id.toString()}.csv`;
   await job.save();
-  await writeAudit({ tenantId, userId, action: "export", entity: "ExportJob", entityId: job._id.toString(), after: { type: input.type, rows: rows.length } });
-  publish({ type: "export.completed", payload: { tenantId, jobId: job._id.toString(), url: job.fileUrl } });
+  await writeAudit({ companyId, userId, action: "export", entity: "ExportJob", entityId: job._id.toString(), after: { type: input.type, rows: rows.length } });
+  publish({ type: "export.completed", payload: { companyId, jobId: job._id.toString(), url: job.fileUrl } });
   return {
     id: job._id.toString(),
     type: job.type,
@@ -309,8 +309,8 @@ export async function queueExportJob(tenantId: string, userId: string, input: { 
   };
 }
 
-export async function getExportJob(tenantId: string, jobId: string) {
-  const job = await ExportJobModel.findOne({ _id: jobId, tenantId }).lean();
+export async function getExportJob(companyId: string, jobId: string) {
+  const job = await ExportJobModel.findOne({ _id: jobId, companyId }).lean();
   if (!job) throw new AppError(404, "export job not found");
   return {
     id: job._id.toString(),
@@ -322,8 +322,8 @@ export async function getExportJob(tenantId: string, jobId: string) {
   };
 }
 
-export async function exportAuditLogs(tenantId: string, query: { from?: string; to?: string }) {
-  const filter: Record<string, unknown> = { tenantId };
+export async function exportAuditLogs(companyId: string, query: { from?: string; to?: string }) {
+  const filter: Record<string, unknown> = { companyId };
   if (query.from || query.to) {
     filter.createdAt = {
       ...(query.from ? { $gte: new Date(query.from) } : {}),
@@ -335,11 +335,11 @@ export async function exportAuditLogs(tenantId: string, query: { from?: string; 
   return { csv: rows.map((row) => row.join(",")).join("\n"), count: docs.length };
 }
 
-export async function fxRevaluation(tenantId: string, userId: string) {
+export async function fxRevaluation(companyId: string, userId: string) {
   const [rates, accounts, journalDocs] = await Promise.all([
-    ExchangeRateModel.find({ tenantId, toCurrency: "USD" }).lean(),
-    AccountModel.find({ tenantId }).lean(),
-    JournalEntryModel.find({ tenantId, status: "posted" }).lean(),
+    ExchangeRateModel.find({ companyId, toCurrency: "USD" }).lean(),
+    AccountModel.find({ companyId }).lean(),
+    JournalEntryModel.find({ companyId, status: "posted" }).lean(),
   ]);
   if (rates.length === 0) throw new AppError(400, "no exchange rates configured for revaluation");
   const rateMap = new Map(rates.map((rate) => [rate.fromCurrency, rate.rate]));
@@ -371,8 +371,8 @@ export async function fxRevaluation(tenantId: string, userId: string) {
   if (lines.length === 0) return { entryNumber: null, lines: 0 };
 
   const totalGain = Math.round(lines.reduce((sum, line) => sum + line.debit - line.credit, 0) * 100) / 100;
-  const gainAccount = await AccountModel.findOne({ tenantId, code: "4900" });
-  const lossAccount = await AccountModel.findOne({ tenantId, code: "4901" });
+  const gainAccount = await AccountModel.findOne({ companyId, code: "4900" });
+  const lossAccount = await AccountModel.findOne({ companyId, code: "4901" });
   if (!gainAccount || !lossAccount) throw new AppError(400, "FX gain/loss accounts (4900/4901) are not set up");
   if (totalGain >= 0) {
     lines.push({ accountId: gainAccount._id, debit: 0, credit: totalGain, currency: "USD", fxRate: 1, description: "unrealized FX gain offset" });
@@ -381,8 +381,8 @@ export async function fxRevaluation(tenantId: string, userId: string) {
   }
 
   const entry = await JournalEntryModel.create({
-    tenantId,
-    entryNumber: await nextNumber(tenantId, "journal", "JE"),
+    companyId,
+    entryNumber: await nextNumber(companyId, "journal", "JE"),
     date: new Date(),
     description: "Period-end FX revaluation",
     reference: { type: "fx-revaluation", id: "fx-revaluation" },
@@ -391,6 +391,6 @@ export async function fxRevaluation(tenantId: string, userId: string) {
     reversedById: null,
     createdBy: userId,
   });
-  await writeAudit({ tenantId, userId, action: "create", entity: "JournalEntry", entityId: entry._id.toString(), after: { entryNumber: entry.entryNumber, description: "Period-end FX revaluation" } });
+  await writeAudit({ companyId, userId, action: "create", entity: "JournalEntry", entityId: entry._id.toString(), after: { entryNumber: entry.entryNumber, description: "Period-end FX revaluation" } });
   return { entryNumber: entry.entryNumber, lines: lines.length };
 }

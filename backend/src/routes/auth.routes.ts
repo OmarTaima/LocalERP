@@ -3,12 +3,11 @@ import {
   changePasswordSchema,
   loginSchema,
   refreshSchema,
-  signupSchema,
   totpSetupSchema,
   totpVerifySchema,
 } from "@erp/shared";
 import { auth } from "../middleware/auth";
-import { tenant } from "../middleware/tenant";
+import { company } from "../middleware/company";
 import { validate } from "../middleware/validate";
 import { asyncHandler } from "../utils/async-handler";
 import {
@@ -18,18 +17,12 @@ import {
   logout,
   refresh,
   setupTwoFactor,
-  signup,
   uploadAvatar,
   verifyTwoFactor,
 } from "../services/auth.service";
 import { AppError } from "../utils/errors";
 
 export const authRouter = Router();
-
-authRouter.post("/signup", validate(signupSchema), asyncHandler(async (req, res) => {
-  const tokens = await signup(req.body);
-  res.status(201).json(tokens);
-}));
 
 authRouter.post("/login", validate(loginSchema), asyncHandler(async (req, res) => {
   const tokens = await login(req.body);
@@ -46,7 +39,7 @@ authRouter.post("/logout", auth, validate(refreshSchema), asyncHandler(async (re
   res.json({ ok: true });
 }));
 
-authRouter.get("/me", auth, tenant, asyncHandler(async (req, res) => {
+authRouter.get("/me", auth, company, asyncHandler(async (req, res) => {
   res.json(await currentUser(req.userId));
 }));
 

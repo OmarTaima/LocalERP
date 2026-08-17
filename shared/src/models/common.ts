@@ -5,8 +5,8 @@ export type Timestamps = {
   updatedAt: string;
 };
 
-export type TenantScoped = {
-  tenantId: ID;
+export type CompanyScoped = {
+  companyId: ID;
 };
 
 export type Money = number;

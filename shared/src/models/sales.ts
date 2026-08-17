@@ -1,4 +1,4 @@
-import type { ID, Money, OrderLine, OrderStatus, OrderTotals, TenantScoped, Timestamps } from "./common";
+import type { ID, Money, OrderLine, OrderStatus, OrderTotals, CompanyScoped, Timestamps } from "./common";
 
 export type CustomerAddress = {
   label: string;
@@ -8,7 +8,7 @@ export type CustomerAddress = {
 };
 
 export type Customer = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     email: string;
     name: string;
@@ -33,7 +33,7 @@ export const QUOTE_STATUSES = [
 export type QuoteStatus = (typeof QUOTE_STATUSES)[number];
 
 export type Quote = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     quoteNumber: string;
     customerId: ID;
@@ -45,7 +45,7 @@ export type Quote = Timestamps &
   };
 
 export type SalesOrder = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     orderNumber: string;
     customerId: ID;
@@ -66,7 +66,7 @@ export const PAYMENT_STATUSES = ["pending", "captured", "failed", "reversed"] as
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 export type Payment = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     orderId: ID;
     amount: Money;
@@ -87,7 +87,7 @@ export type PickLine = {
 };
 
 export type Shipment = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     orderId: ID;
     carrier: string;
@@ -109,7 +109,7 @@ export type RmaItem = {
 };
 
 export type Rma = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     rmaNumber: string;
     orderId: ID;
@@ -130,7 +130,7 @@ export type RecurringLine = {
 };
 
 export type RecurringInvoice = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     customerId: ID;
     items: RecurringLine[];

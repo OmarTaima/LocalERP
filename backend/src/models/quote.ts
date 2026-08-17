@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { Quote } from "@erp/shared";
 
-export type QuoteDoc = Omit<Quote, "id" | "tenantId" | "customerId" | "validUntil"> & {
+export type QuoteDoc = Omit<Quote, "id" | "companyId" | "customerId" | "validUntil"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   customerId: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -15,7 +15,7 @@ const { Schema } = mongoose;
 
 const quoteSchema = new Schema<QuoteDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     quoteNumber: { type: String, required: true },
     customerId: { type: Schema.Types.ObjectId, ref: "Customer", required: true },
     items: {
@@ -45,8 +45,8 @@ const quoteSchema = new Schema<QuoteDoc>(
   { timestamps: true },
 );
 
-quoteSchema.index({ tenantId: 1, quoteNumber: 1 }, { unique: true });
-quoteSchema.index({ tenantId: 1, customerId: 1, createdAt: -1 });
+quoteSchema.index({ companyId: 1, quoteNumber: 1 }, { unique: true });
+quoteSchema.index({ companyId: 1, customerId: 1, createdAt: -1 });
 
 export const QuoteModel: Model<QuoteDoc> =
   (mongoose.models.Quote as Model<QuoteDoc>) || mongoose.model<QuoteDoc>("Quote", quoteSchema);

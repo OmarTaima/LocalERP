@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ERP — Enterprise Management",
-  description: "Multi-tenant ERP SaaS — accounting, inventory, manufacturing, HR, and more",
+  description: "ERP SaaS — accounting, inventory, manufacturing, HR, and more",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

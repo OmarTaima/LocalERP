@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { SalesOrder } from "@erp/shared";
 
-export type SalesOrderDoc = Omit<SalesOrder, "id" | "tenantId" | "customerId" | "quoteId"> & {
+export type SalesOrderDoc = Omit<SalesOrder, "id" | "companyId" | "customerId" | "quoteId"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   customerId: Types.ObjectId;
   quoteId: Types.ObjectId | null;
   createdAt: Date;
@@ -15,7 +15,7 @@ const { Schema } = mongoose;
 
 const salesOrderSchema = new Schema<SalesOrderDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     orderNumber: { type: String, required: true },
     customerId: { type: Schema.Types.ObjectId, ref: "Customer", required: true },
     quoteId: { type: Schema.Types.ObjectId, ref: "Quote", default: null },
@@ -58,10 +58,10 @@ const salesOrderSchema = new Schema<SalesOrderDoc>(
   { timestamps: true },
 );
 
-salesOrderSchema.index({ tenantId: 1, orderNumber: 1 }, { unique: true });
-salesOrderSchema.index({ tenantId: 1, customerId: 1, createdAt: -1 });
-salesOrderSchema.index({ tenantId: 1, status: 1 });
-salesOrderSchema.index({ tenantId: 1, idempotencyKey: 1 }, { unique: true });
+salesOrderSchema.index({ companyId: 1, orderNumber: 1 }, { unique: true });
+salesOrderSchema.index({ companyId: 1, customerId: 1, createdAt: -1 });
+salesOrderSchema.index({ companyId: 1, status: 1 });
+salesOrderSchema.index({ companyId: 1, idempotencyKey: 1 }, { unique: true });
 
 export const SalesOrderModel: Model<SalesOrderDoc> =
   (mongoose.models.SalesOrder as Model<SalesOrderDoc>) || mongoose.model<SalesOrderDoc>("SalesOrder", salesOrderSchema);

@@ -16,11 +16,14 @@ import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import InputAdornment from "@mui/material/InputAdornment";
 
 export type FormField = {
   name: string;
   label: string;
-  type?: "text" | "number" | "date" | "select" | "multiline";
+  type?: "text" | "number" | "date" | "select" | "multiline" | "password" | "email";
   options?: { value: string; label: string }[];
   required?: boolean;
   defaultValue?: string | number;
@@ -46,6 +49,7 @@ export function FormDialog({
   onClose,
   submitLabel = "Save",
   loading,
+  maxWidth,
   children,
 }: {
   open: boolean;
@@ -57,6 +61,7 @@ export function FormDialog({
   onClose: () => void;
   submitLabel?: string;
   loading?: boolean;
+  maxWidth?: "sm" | "md";
   children?: ReactNode;
 }) {
   const [values, setValues] = useState<Record<string, string | number>>(() => {
@@ -67,6 +72,7 @@ export function FormDialog({
     return seed;
   });
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const set = (name: string) => (event: React.ChangeEvent<HTMLInputElement>) =>
     setValues((prev) => ({ ...prev, [name]: event.target.value }));
@@ -81,7 +87,7 @@ export function FormDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth={maxWidth ?? "sm"}>
       <DialogTitle sx={{ fontWeight: 700, color: "#0f172a" }}>
         {title}
         {subtitle && (
@@ -99,13 +105,36 @@ export function FormDialog({
               select={field.type === "select"}
               multiline={field.type === "multiline"}
               minRows={field.type === "multiline" ? 3 : undefined}
-              type={field.type === "date" ? "date" : field.type === "number" ? "number" : field.type === "multiline" ? undefined : "text"}
+              type={
+                field.type === "date"
+                  ? "date"
+                  : field.type === "number"
+                    ? "number"
+                    : field.type === "password"
+                      ? showPassword ? "text" : "password"
+                      : field.type === "email"
+                        ? "email"
+                        : field.type === "multiline" ? undefined : "text"
+              }
               size="small"
               fullWidth
               helperText={field.helper}
               slotProps={{
                 inputLabel: { shrink: true },
                 htmlInput: { min: field.type === "number" ? 0 : undefined },
+                ...(field.type === "password"
+                  ? {
+                      input: {
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton edge="end" onClick={() => setShowPassword((value) => !value)} aria-label="Toggle password visibility">
+                              {showPassword ? <VisibilityOff sx={{ fontSize: 19 }} /> : <Visibility sx={{ fontSize: 19 }} />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      },
+                    }
+                  : {}),
               }}
             >
               {field.type === "select" &&

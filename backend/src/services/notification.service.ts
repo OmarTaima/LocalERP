@@ -3,7 +3,7 @@ import { NotificationModel } from "../models";
 import { publish } from "../events/bus";
 
 type CreateNotificationOptions = {
-  tenantId: string;
+  companyId: string;
   userId: string;
   type: NotificationType;
   title: string;
@@ -13,7 +13,7 @@ type CreateNotificationOptions = {
 
 export async function createNotification(options: CreateNotificationOptions): Promise<void> {
   await NotificationModel.create({
-    tenantId: options.tenantId,
+    companyId: options.companyId,
     userId: options.userId,
     type: options.type,
     title: options.title,
@@ -23,6 +23,6 @@ export async function createNotification(options: CreateNotificationOptions): Pr
   });
   publish({
     type: "notification.created",
-    payload: { tenantId: options.tenantId, userId: options.userId, type: options.type },
+    payload: { companyId: options.companyId, userId: options.userId, type: options.type },
   });
 }

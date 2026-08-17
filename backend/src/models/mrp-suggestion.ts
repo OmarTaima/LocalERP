@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { MrpSuggestion } from "@erp/shared";
 
-export type MrpSuggestionDoc = Omit<MrpSuggestion, "id" | "tenantId" | "productId" | "warehouseId"> & {
+export type MrpSuggestionDoc = Omit<MrpSuggestion, "id" | "companyId" | "productId" | "warehouseId"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   productId: Types.ObjectId;
   warehouseId: Types.ObjectId;
   createdAt: Date;
@@ -15,7 +15,7 @@ const { Schema } = mongoose;
 
 const mrpSuggestionSchema = new Schema<MrpSuggestionDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
     warehouseId: { type: Schema.Types.ObjectId, ref: "Warehouse", required: true },
     type: { type: String, enum: ["purchase", "produce"], required: true },
@@ -26,8 +26,8 @@ const mrpSuggestionSchema = new Schema<MrpSuggestionDoc>(
   { timestamps: true },
 );
 
-mrpSuggestionSchema.index({ tenantId: 1, status: 1, createdAt: -1 });
-mrpSuggestionSchema.index({ tenantId: 1, productId: 1, warehouseId: 1, status: 1 }, { unique: true, partialFilterExpression: { status: "open" } });
+mrpSuggestionSchema.index({ companyId: 1, status: 1, createdAt: -1 });
+mrpSuggestionSchema.index({ companyId: 1, productId: 1, warehouseId: 1, status: 1 }, { unique: true, partialFilterExpression: { status: "open" } });
 
 export const MrpSuggestionModel: Model<MrpSuggestionDoc> =
   (mongoose.models.MrpSuggestion as Model<MrpSuggestionDoc>) ||

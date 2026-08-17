@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { Transfer } from "@erp/shared";
 
-export type TransferDoc = Omit<Transfer, "id" | "tenantId" | "fromWarehouseId" | "toWarehouseId"> & {
+export type TransferDoc = Omit<Transfer, "id" | "companyId" | "fromWarehouseId" | "toWarehouseId"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   fromWarehouseId: Types.ObjectId;
   toWarehouseId: Types.ObjectId;
   createdAt: Date;
@@ -15,7 +15,7 @@ const { Schema } = mongoose;
 
 const transferSchema = new Schema<TransferDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     fromWarehouseId: { type: Schema.Types.ObjectId, ref: "Warehouse", required: true },
     toWarehouseId: { type: Schema.Types.ObjectId, ref: "Warehouse", required: true },
     items: {
@@ -35,8 +35,8 @@ const transferSchema = new Schema<TransferDoc>(
   { timestamps: true },
 );
 
-transferSchema.index({ tenantId: 1, referenceNumber: 1 }, { unique: true });
-transferSchema.index({ tenantId: 1, status: 1, createdAt: -1 });
+transferSchema.index({ companyId: 1, referenceNumber: 1 }, { unique: true });
+transferSchema.index({ companyId: 1, status: 1, createdAt: -1 });
 
 export const TransferModel: Model<TransferDoc> =
   (mongoose.models.Transfer as Model<TransferDoc>) || mongoose.model<TransferDoc>("Transfer", transferSchema);

@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { Rma } from "@erp/shared";
 
-export type RmaDoc = Omit<Rma, "id" | "tenantId" | "orderId" | "restockedAt"> & {
+export type RmaDoc = Omit<Rma, "id" | "companyId" | "orderId" | "restockedAt"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   orderId: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -15,7 +15,7 @@ const { Schema } = mongoose;
 
 const rmaSchema = new Schema<RmaDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     rmaNumber: { type: String, required: true },
     orderId: { type: Schema.Types.ObjectId, ref: "SalesOrder", required: true },
     items: {
@@ -36,8 +36,8 @@ const rmaSchema = new Schema<RmaDoc>(
   { timestamps: true },
 );
 
-rmaSchema.index({ tenantId: 1, rmaNumber: 1 }, { unique: true });
-rmaSchema.index({ tenantId: 1, orderId: 1, createdAt: -1 });
+rmaSchema.index({ companyId: 1, rmaNumber: 1 }, { unique: true });
+rmaSchema.index({ companyId: 1, orderId: 1, createdAt: -1 });
 
 export const RmaModel: Model<RmaDoc> =
   (mongoose.models.Rma as Model<RmaDoc>) || mongoose.model<RmaDoc>("Rma", rmaSchema);

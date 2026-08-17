@@ -1,7 +1,7 @@
-import type { ID, Money, TenantScoped, Timestamps } from "./common";
+import type { ID, Money, CompanyScoped, Timestamps } from "./common";
 
 export type Supplier = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     name: string;
     contactName: string;
@@ -37,7 +37,7 @@ export const PO_STATUSES = [
 export type PoStatus = (typeof PO_STATUSES)[number];
 
 export type PurchaseOrder = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     poNumber: string;
     supplierId: ID;
@@ -50,7 +50,7 @@ export type PurchaseOrder = Timestamps &
   };
 
 export type ApprovalRequest = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     entityType: "purchase-order" | "expense-claim" | "leave";
     entityId: ID;

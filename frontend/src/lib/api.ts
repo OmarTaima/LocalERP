@@ -14,6 +14,17 @@ export function getToken(): string | null {
   return window.localStorage.getItem("erp_access_token");
 }
 
+export function getSaToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem("erp_sa_access_token");
+}
+
+export function setSaToken(accessToken: string | null): void {
+  if (typeof window === "undefined") return;
+  if (accessToken) window.localStorage.setItem("erp_sa_access_token", accessToken);
+  else window.localStorage.removeItem("erp_sa_access_token");
+}
+
 export function getRefreshToken(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem("erp_refresh_token");

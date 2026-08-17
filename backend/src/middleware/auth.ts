@@ -4,7 +4,7 @@ import { env } from "../config/env";
 
 export type JwtPayload = {
   sub: string;
-  tenantId: string;
+  companyId: string;
   permissions: string[];
   role: string;
 };
@@ -26,13 +26,13 @@ export function auth(req: Request, res: Response, next: NextFunction): void {
   try {
     const token = header.slice(7);
     const decoded = jwt.verify(token, env.JWT_SECRET) as jwt.JwtPayload;
-    if (!decoded.sub || !decoded.tenantId) {
+    if (!decoded.sub || !decoded.companyId) {
       res.status(401).json({ error: "invalid token payload" });
       return;
     }
     req.auth = {
       sub: decoded.sub,
-      tenantId: decoded.tenantId,
+      companyId: decoded.companyId,
       permissions: Array.isArray(decoded.permissions) ? decoded.permissions : [],
       role: typeof decoded.role === "string" ? decoded.role : "",
     };

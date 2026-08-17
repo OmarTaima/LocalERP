@@ -4,9 +4,9 @@ import type { TwoFactor } from "@erp/shared";
 
 const { model, models, Schema } = mongoose;
 
-export type TwoFactorDoc = Omit<TwoFactor, "id" | "tenantId" | "userId" | "verifiedAt"> & {
+export type TwoFactorDoc = Omit<TwoFactor, "id" | "companyId" | "userId" | "verifiedAt"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   userId: Types.ObjectId;
   verifiedAt: Date | null;
   createdAt: Date;
@@ -15,7 +15,7 @@ export type TwoFactorDoc = Omit<TwoFactor, "id" | "tenantId" | "userId" | "verif
 
 const twoFactorSchema = new Schema<TwoFactorDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     secretEncrypted: { type: String, required: true },
     recoveryCodes: { type: [String], required: true },
@@ -25,7 +25,7 @@ const twoFactorSchema = new Schema<TwoFactorDoc>(
   { timestamps: true },
 );
 
-twoFactorSchema.index({ tenantId: 1, userId: 1 }, { unique: true });
+twoFactorSchema.index({ companyId: 1, userId: 1 }, { unique: true });
 
 export const TwoFactorModel: Model<TwoFactorDoc> =
   (models.TwoFactor as Model<TwoFactorDoc>) || model<TwoFactorDoc>("TwoFactor", twoFactorSchema);

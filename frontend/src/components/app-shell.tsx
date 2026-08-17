@@ -36,6 +36,8 @@ import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
+import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import { useAuth } from "@/lib/auth";
 import { confirmAction, toastSuccess } from "@/components/ui";
 
@@ -76,6 +78,14 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+export const ADMIN_NAV_GROUP: NavGroup = {
+  label: "Admin",
+  items: [
+    { label: "Users", icon: <PeopleOutlineIcon />, path: "/users" },
+    { label: "Roles", icon: <AdminPanelSettingsOutlinedIcon />, path: "/roles" },
+  ],
+};
+
 const listVariants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.08 } },
@@ -94,6 +104,11 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenu, setUserMenu] = useState<null | HTMLElement>(null);
+
+  const canAdmin = user?.permissions.includes("auth:users:write") ?? false;
+  const navGroups = canAdmin
+    ? NAV_GROUPS.flatMap((group) => (group.label === "System" ? [ADMIN_NAV_GROUP, group] : [group]))
+    : NAV_GROUPS;
 
   const handleLogout = async () => {
     const ok = await confirmAction({
@@ -146,7 +161,7 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
       </Stack>
       <Divider sx={{ borderColor: "rgba(148,163,184,0.15)" }} />
       <Box sx={{ flex: 1, overflowY: "auto", px: 1.5, py: 1.5 }}>
-        {NAV_GROUPS.map((group) => (
+        {navGroups.map((group) => (
           <Box key={group.label} sx={{ mb: 1.5 }}>
             <Typography
               sx={{

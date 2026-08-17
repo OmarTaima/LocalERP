@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { ShiftPattern } from "@erp/shared";
 
-export type ShiftPatternDoc = Omit<ShiftPattern, "id" | "tenantId"> & {
+export type ShiftPatternDoc = Omit<ShiftPattern, "id" | "companyId"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -13,7 +13,7 @@ const { Schema } = mongoose;
 
 const shiftPatternSchema = new Schema<ShiftPatternDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     name: { type: String, required: true },
     startTime: { type: String, required: true },
     endTime: { type: String, required: true },
@@ -22,7 +22,7 @@ const shiftPatternSchema = new Schema<ShiftPatternDoc>(
   { timestamps: true },
 );
 
-shiftPatternSchema.index({ tenantId: 1, name: 1 }, { unique: true });
+shiftPatternSchema.index({ companyId: 1, name: 1 }, { unique: true });
 
 export const ShiftPatternModel: Model<ShiftPatternDoc> =
   (mongoose.models.ShiftPattern as Model<ShiftPatternDoc>) || mongoose.model<ShiftPatternDoc>("ShiftPattern", shiftPatternSchema);

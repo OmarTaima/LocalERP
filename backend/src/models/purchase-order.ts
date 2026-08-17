@@ -5,9 +5,9 @@ import type { PurchaseOrder } from "@erp/shared";
 type GrnItemDoc = { productId: Types.ObjectId; quantity: number; unitCost: number };
 type GrnDoc = { grnNumber: string; receivedAt: Date; items: GrnItemDoc[] };
 
-export type PurchaseOrderDoc = Omit<PurchaseOrder, "id" | "tenantId" | "supplierId" | "approvalId" | "expectedDate" | "grns"> & {
+export type PurchaseOrderDoc = Omit<PurchaseOrder, "id" | "companyId" | "supplierId" | "approvalId" | "expectedDate" | "grns"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   supplierId: Types.ObjectId;
   approvalId: Types.ObjectId | null;
   expectedDate: Date;
@@ -20,7 +20,7 @@ const { Schema } = mongoose;
 
 const purchaseOrderSchema = new Schema<PurchaseOrderDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     poNumber: { type: String, required: true },
     supplierId: { type: Schema.Types.ObjectId, ref: "Supplier", required: true },
     items: {
@@ -62,9 +62,9 @@ const purchaseOrderSchema = new Schema<PurchaseOrderDoc>(
   { timestamps: true },
 );
 
-purchaseOrderSchema.index({ tenantId: 1, poNumber: 1 }, { unique: true });
-purchaseOrderSchema.index({ tenantId: 1, supplierId: 1, createdAt: -1 });
-purchaseOrderSchema.index({ tenantId: 1, status: 1 });
+purchaseOrderSchema.index({ companyId: 1, poNumber: 1 }, { unique: true });
+purchaseOrderSchema.index({ companyId: 1, supplierId: 1, createdAt: -1 });
+purchaseOrderSchema.index({ companyId: 1, status: 1 });
 
 export const PurchaseOrderModel: Model<PurchaseOrderDoc> =
   (mongoose.models.PurchaseOrder as Model<PurchaseOrderDoc>) ||

@@ -4,10 +4,10 @@ import type { StockMovement } from "@erp/shared";
 
 export type StockMovementDoc = Omit<
   StockMovement,
-  "id" | "tenantId" | "productId" | "warehouseId" | "batchId" | "referenceId" | "userId"
+  "id" | "companyId" | "productId" | "warehouseId" | "batchId" | "referenceId" | "userId"
 > & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   productId: Types.ObjectId;
   warehouseId: Types.ObjectId;
   batchId: Types.ObjectId | null;
@@ -21,7 +21,7 @@ const { Schema } = mongoose;
 
 const stockMovementSchema = new Schema<StockMovementDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
     warehouseId: { type: Schema.Types.ObjectId, ref: "Warehouse", required: true },
     batchId: { type: Schema.Types.ObjectId, ref: "Batch", default: null },
@@ -38,9 +38,9 @@ const stockMovementSchema = new Schema<StockMovementDoc>(
   { timestamps: true },
 );
 
-stockMovementSchema.index({ tenantId: 1, productId: 1, createdAt: -1 });
-stockMovementSchema.index({ tenantId: 1, referenceId: 1 });
-stockMovementSchema.index({ tenantId: 1, createdAt: -1 });
+stockMovementSchema.index({ companyId: 1, productId: 1, createdAt: -1 });
+stockMovementSchema.index({ companyId: 1, referenceId: 1 });
+stockMovementSchema.index({ companyId: 1, createdAt: -1 });
 
 export const StockMovementModel: Model<StockMovementDoc> =
   (mongoose.models.StockMovement as Model<StockMovementDoc>) ||

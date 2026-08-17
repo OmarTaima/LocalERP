@@ -65,14 +65,14 @@ Granular permission codes — `<domain>:<action>`. Roles are sets of these codes
 | `auth:users:read` / `auth:users:write` | manage users |
 | `auth:roles:read` / `auth:roles:write` | manage roles & permissions |
 | `auth:sessions:read` / `auth:sessions:write` | manage sessions |
-| `tenant:read` / `tenant:write` | company settings, API keys |
+| `company:read` / `company:write` | company settings, API keys |
 | `dashboard:read` | dashboard KPIs and alerts |
 | `audit:read` | audit trail + compliance export |
 | `notifications:read` | notifications |
 | `imports:write` / `imports:read` | import jobs |
 | `exports:read` | export jobs |
 
-## Role presets (seeded per tenant)
+## Role presets (seeded per company)
 
 | Role | Permissions |
 |---|---|
@@ -85,4 +85,6 @@ Granular permission codes — `<domain>:<action>`. Roles are sets of these codes
 
 ## Route → permission map
 
-Every endpoint in `docs/API.md` lists its required code. Enforcement: `rbac(permission)` middleware after `auth()` and `tenant()`.
+Every endpoint in `docs/API.md` lists its required code. Enforcement: `rbac(permission)` middleware after `auth()` and `company()`.
+
+Platform super-admins do not hold company permissions — their JWT carries `scope: "superadmin"` and is enforced by `requireSuperAdmin` on `/api/v1/admin/*` routes.

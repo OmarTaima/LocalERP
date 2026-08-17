@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { ExpenseClaim } from "@erp/shared";
 
-export type ExpenseClaimDoc = Omit<ExpenseClaim, "id" | "tenantId" | "userId" | "approvalId"> & {
+export type ExpenseClaimDoc = Omit<ExpenseClaim, "id" | "companyId" | "userId" | "approvalId"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   userId: Types.ObjectId;
   approvalId: Types.ObjectId | null;
   createdAt: Date;
@@ -15,7 +15,7 @@ const { Schema } = mongoose;
 
 const expenseClaimSchema = new Schema<ExpenseClaimDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     items: {
       type: [
@@ -35,8 +35,8 @@ const expenseClaimSchema = new Schema<ExpenseClaimDoc>(
   { timestamps: true },
 );
 
-expenseClaimSchema.index({ tenantId: 1, status: 1, createdAt: -1 });
-expenseClaimSchema.index({ tenantId: 1, userId: 1 });
+expenseClaimSchema.index({ companyId: 1, status: 1, createdAt: -1 });
+expenseClaimSchema.index({ companyId: 1, userId: 1 });
 
 export const ExpenseClaimModel: Model<ExpenseClaimDoc> =
   (mongoose.models.ExpenseClaim as Model<ExpenseClaimDoc>) ||

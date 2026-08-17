@@ -1,32 +1,32 @@
 import type { ID, PlanTier, Timestamps } from "./common";
 
-export type TenantSettings = {
+export type CompanySettings = {
   currency: string;
   taxRate: number;
   timezone: string;
 };
 
-export type TenantLimits = {
+export type CompanyLimits = {
   maxUsers: number;
   maxProducts: number;
   features: string[];
 };
 
-export type Tenant = Timestamps & {
+export type Company = Timestamps & {
   id: ID;
   name: string;
   slug: string;
   plan: PlanTier;
   isActive: boolean;
-  settings: TenantSettings;
-  limits: TenantLimits;
+  settings: CompanySettings;
+  limits: CompanyLimits;
 };
 
 export type UserStatus = "active" | "inactive";
 
 export type User = Timestamps & {
   id: ID;
-  tenantId: ID;
+  companyId: ID;
   email: string;
   name: string;
   roleId: ID;
@@ -38,7 +38,7 @@ export type User = Timestamps & {
 
 export type Role = Timestamps & {
   id: ID;
-  tenantId: ID;
+  companyId: ID;
   name: string;
   permissions: string[];
   isSystem: boolean;
@@ -46,7 +46,7 @@ export type Role = Timestamps & {
 
 export type Session = Timestamps & {
   id: ID;
-  tenantId: ID;
+  companyId: ID;
   userId: ID;
   tokenHash: string;
   device: string;
@@ -57,7 +57,7 @@ export type Session = Timestamps & {
 
 export type ApiKey = Timestamps & {
   id: ID;
-  tenantId: ID;
+  companyId: ID;
   name: string;
   keyHash: string;
   permissions: string[];
@@ -67,7 +67,7 @@ export type ApiKey = Timestamps & {
 
 export type TwoFactor = Timestamps & {
   id: ID;
-  tenantId: ID;
+  companyId: ID;
   userId: ID;
   secretEncrypted: string;
   recoveryCodes: string[];

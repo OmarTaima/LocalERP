@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { auth } from "../middleware/auth";
 import { rbac } from "../middleware/rbac";
-import { tenant } from "../middleware/tenant";
+import { company } from "../middleware/company";
 import { asyncHandler } from "../utils/async-handler";
 import { parseDateRange, parsePagination } from "../utils/pagination";
 import { AuditLogModel } from "../models";
 
 export const auditRouter = Router();
 
-auditRouter.use(auth, tenant);
+auditRouter.use(auth, company);
 
 auditRouter.get(
   "/",
@@ -16,7 +16,7 @@ auditRouter.get(
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip, limit } = parsePagination(req.query);
     const { from, to } = parseDateRange(req.query);
-    const filter: Record<string, unknown> = { tenantId: req.tenantId };
+    const filter: Record<string, unknown> = { companyId: req.companyId };
     if (typeof req.query.entity === "string") filter.entity = req.query.entity;
     if (typeof req.query.user === "string") filter.userId = req.query.user;
     if (from || to) {

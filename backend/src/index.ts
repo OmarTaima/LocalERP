@@ -3,10 +3,11 @@ import express from "express";
 import mongoose from "mongoose";
 import { env } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler";
+import { adminRouter } from "./routes/admin.routes";
 import { authRouter } from "./routes/auth.routes";
 import { userRouter } from "./routes/user.routes";
 import { roleRouter } from "./routes/role.routes";
-import { tenantRouter } from "./routes/tenant.routes";
+import { companyRouter } from "./routes/company.routes";
 import { auditRouter } from "./routes/audit.routes";
 import { notificationRouter } from "./routes/notification.routes";
 import { catalogRouter } from "./routes/catalog.routes";
@@ -29,9 +30,10 @@ app.get("/api/v1/health", (_req, res) => {
 });
 
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/admin", adminRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/roles", roleRouter);
-app.use("/api/v1/tenant", tenantRouter);
+app.use("/api/v1/company", companyRouter);
 app.use("/api/v1/audit-logs", auditRouter);
 app.use("/api/v1/notifications", notificationRouter);
 app.use("/api/v1", catalogRouter);

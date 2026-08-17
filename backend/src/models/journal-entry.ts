@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { JournalEntry } from "@erp/shared";
 
-export type JournalEntryDoc = Omit<JournalEntry, "id" | "tenantId" | "date" | "reversedById" | "createdBy"> & {
+export type JournalEntryDoc = Omit<JournalEntry, "id" | "companyId" | "date" | "reversedById" | "createdBy"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   date: Date;
   reversedById: Types.ObjectId | null;
   createdBy: Types.ObjectId;
@@ -16,7 +16,7 @@ const { Schema } = mongoose;
 
 const journalEntrySchema = new Schema<JournalEntryDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     entryNumber: { type: String, required: true },
     date: { type: Date, required: true },
     description: { type: String, required: true },
@@ -44,9 +44,9 @@ const journalEntrySchema = new Schema<JournalEntryDoc>(
   { timestamps: true },
 );
 
-journalEntrySchema.index({ tenantId: 1, entryNumber: 1 }, { unique: true });
-journalEntrySchema.index({ tenantId: 1, date: -1 });
-journalEntrySchema.index({ tenantId: 1, "reference.type": 1, "reference.id": 1 });
+journalEntrySchema.index({ companyId: 1, entryNumber: 1 }, { unique: true });
+journalEntrySchema.index({ companyId: 1, date: -1 });
+journalEntrySchema.index({ companyId: 1, "reference.type": 1, "reference.id": 1 });
 
 export const JournalEntryModel: Model<JournalEntryDoc> =
   (mongoose.models.JournalEntry as Model<JournalEntryDoc>) ||

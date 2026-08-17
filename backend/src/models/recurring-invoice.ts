@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { RecurringInvoice } from "@erp/shared";
 
-export type RecurringInvoiceDoc = Omit<RecurringInvoice, "id" | "tenantId" | "customerId" | "nextRunAt"> & {
+export type RecurringInvoiceDoc = Omit<RecurringInvoice, "id" | "companyId" | "customerId" | "nextRunAt"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   customerId: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -15,7 +15,7 @@ const { Schema } = mongoose;
 
 const recurringInvoiceSchema = new Schema<RecurringInvoiceDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     customerId: { type: Schema.Types.ObjectId, ref: "Customer", required: true },
     items: {
       type: [
@@ -36,8 +36,8 @@ const recurringInvoiceSchema = new Schema<RecurringInvoiceDoc>(
   { timestamps: true },
 );
 
-recurringInvoiceSchema.index({ tenantId: 1, customerId: 1 });
-recurringInvoiceSchema.index({ tenantId: 1, status: 1, nextRunAt: 1 });
+recurringInvoiceSchema.index({ companyId: 1, customerId: 1 });
+recurringInvoiceSchema.index({ companyId: 1, status: 1, nextRunAt: 1 });
 
 export const RecurringInvoiceModel: Model<RecurringInvoiceDoc> =
   (mongoose.models.RecurringInvoice as Model<RecurringInvoiceDoc>) ||

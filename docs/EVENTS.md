@@ -18,7 +18,7 @@ Events flow through Redis (BullMQ queues for async work, pub/sub for live UI upd
 ### Sales
 | Event | Payload highlights | Consumers |
 |---|---|---|
-| `order.created` | orderId, tenantId | stats, audit |
+| `order.created` | orderId, companyId | stats, audit |
 | `order.status.changed` | orderId, from, to | WS live, notifications |
 | `order.paid` | orderId, amount, method | finance (invoice auto-paid), stats |
 | `order.fulfilled` | orderId, lines | inventory (stock already decremented in txn) |
@@ -47,7 +47,7 @@ Events flow through Redis (BullMQ queues for async work, pub/sub for live UI upd
 ### Accounting & Finance
 | Event | Payload | Consumers |
 |---|---|---|
-| `journal.posted` | entryId, tenantId | stats, audit, WS live |
+| `journal.posted` | entryId, companyId | stats, audit, WS live |
 | `invoice.overdue` | invoiceId, customerId, amount | notifications, cron |
 | `expense.claim.submitted` | claimId, userId, total | approvals |
 | `expense.claim.decided` | claimId, status | notifications |
@@ -82,5 +82,5 @@ Events flow through Redis (BullMQ queues for async work, pub/sub for live UI upd
 
 ## WS push (live UI)
 
-Channel: `tenant:{tenantId}` — pushed as `{ event, payload, at }`.
+Channel: `company:{companyId}` — pushed as `{ event, payload, at }`.
 Order events, stock alerts, approval queue changes, notification.created, stats.refresh.

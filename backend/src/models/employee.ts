@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { Employee } from "@erp/shared";
 
-export type EmployeeDoc = Omit<Employee, "id" | "tenantId" | "userId" | "departmentId" | "hireDate"> & {
+export type EmployeeDoc = Omit<Employee, "id" | "companyId" | "userId" | "departmentId" | "hireDate"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   userId: Types.ObjectId | null;
   departmentId: Types.ObjectId;
   hireDate: Date;
@@ -16,7 +16,7 @@ const { Schema } = mongoose;
 
 const employeeSchema = new Schema<EmployeeDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", default: null },
     name: { type: String, required: true },
     email: { type: String, required: true },
@@ -29,10 +29,10 @@ const employeeSchema = new Schema<EmployeeDoc>(
   { timestamps: true },
 );
 
-employeeSchema.index({ tenantId: 1, email: 1 }, { unique: true });
-employeeSchema.index({ tenantId: 1, departmentId: 1 });
-employeeSchema.index({ tenantId: 1, status: 1 });
-employeeSchema.index({ tenantId: 1, name: "text", email: "text" });
+employeeSchema.index({ companyId: 1, email: 1 }, { unique: true });
+employeeSchema.index({ companyId: 1, departmentId: 1 });
+employeeSchema.index({ companyId: 1, status: 1 });
+employeeSchema.index({ companyId: 1, name: "text", email: "text" });
 
 export const EmployeeModel: Model<EmployeeDoc> =
   (mongoose.models.Employee as Model<EmployeeDoc>) || mongoose.model<EmployeeDoc>("Employee", employeeSchema);

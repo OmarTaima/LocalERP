@@ -1,10 +1,10 @@
-import type { ID, Money, TenantScoped, Timestamps } from "./common";
+import type { ID, Money, CompanyScoped, Timestamps } from "./common";
 
 export const ACCOUNT_TYPES = ["asset", "liability", "equity", "revenue", "expense", "contra"] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
 export type Account = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     code: string;
     name: string;
@@ -32,7 +32,7 @@ export type JournalReference = {
 };
 
 export type JournalEntry = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     entryNumber: string;
     date: string;

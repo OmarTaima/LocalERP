@@ -4,9 +4,9 @@ import type { User } from "@erp/shared";
 
 const { model, models, Schema } = mongoose;
 
-export type UserDoc = Omit<User, "id" | "tenantId" | "roleId" | "lastLoginAt"> & {
+export type UserDoc = Omit<User, "id" | "companyId" | "roleId" | "lastLoginAt"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   roleId: Types.ObjectId;
   lastLoginAt: Date | null;
   passwordHash: string;
@@ -18,7 +18,7 @@ export type UserDoc = Omit<User, "id" | "tenantId" | "roleId" | "lastLoginAt"> &
 
 const userSchema = new Schema<UserDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     email: { type: String, required: true, lowercase: true, unique: true },
     passwordHash: { type: String, required: true },
     name: { type: String, required: true, trim: true },
@@ -33,8 +33,8 @@ const userSchema = new Schema<UserDoc>(
   { timestamps: true },
 );
 
-userSchema.index({ tenantId: 1, email: 1 }, { unique: true });
-userSchema.index({ tenantId: 1, roleId: 1 });
+userSchema.index({ companyId: 1, email: 1 }, { unique: true });
+userSchema.index({ companyId: 1, roleId: 1 });
 
 export const UserModel: Model<UserDoc> =
   (models.User as Model<UserDoc>) || model<UserDoc>("User", userSchema);

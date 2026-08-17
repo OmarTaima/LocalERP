@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { Account } from "@erp/shared";
 
-export type AccountDoc = Omit<Account, "id" | "tenantId" | "parentId"> & {
+export type AccountDoc = Omit<Account, "id" | "companyId" | "parentId"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   parentId: Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
@@ -14,7 +14,7 @@ const { Schema } = mongoose;
 
 const accountSchema = new Schema<AccountDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     code: { type: String, required: true },
     name: { type: String, required: true },
     type: { type: String, enum: ["asset", "liability", "equity", "revenue", "expense", "contra"], required: true },
@@ -25,8 +25,8 @@ const accountSchema = new Schema<AccountDoc>(
   { timestamps: true },
 );
 
-accountSchema.index({ tenantId: 1, code: 1 }, { unique: true });
-accountSchema.index({ tenantId: 1, type: 1 });
+accountSchema.index({ companyId: 1, code: 1 }, { unique: true });
+accountSchema.index({ companyId: 1, type: 1 });
 
 export const AccountModel: Model<AccountDoc> =
   (mongoose.models.Account as Model<AccountDoc>) || mongoose.model<AccountDoc>("Account", accountSchema);
@@ -47,11 +47,11 @@ export const DEFAULT_CHART: Array<{ code: string; name: string; type: Account["t
   { code: "5300", name: "Other Expenses", type: "expense" },
 ];
 
-export async function seedDefaultAccounts(tenantId: string): Promise<number> {
-  const count = await AccountModel.countDocuments({ tenantId });
+export async function seedDefaultAccounts(companyId: string): Promise<number> {
+  const count = await AccountModel.countDocuments({ companyId });
   if (count > 0) return 0;
   await AccountModel.insertMany(
-    DEFAULT_CHART.map((account) => ({ tenantId, ...account, isSystem: true, parentId: null, currency: null })),
+    DEFAULT_CHART.map((account) => ({ companyId, ...account, isSystem: true, parentId: null, currency: null })),
   );
   return DEFAULT_CHART.length;
 }

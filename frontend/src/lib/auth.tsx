@@ -9,15 +9,15 @@ export type Me = {
   email: string;
   name: string;
   roleId: string;
-  tenantId: string;
-  plan: string;
+  companyId: string;
+  permissions: string[];
+  roleName: string;
 };
 
 type AuthContextValue = {
   user: Me | null;
   loading: boolean;
   login: (email: string, password: string, totpCode?: string) => Promise<Me>;
-  signup: (input: { companyName: string; name: string; email: string; password: string; plan?: string }) => Promise<Me>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -66,17 +66,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return me;
   }, []);
 
-  const signup = useCallback(async (input: { companyName: string; name: string; email: string; password: string; plan?: string }) => {
-    const tokens = await api<{ accessToken: string; refreshToken: string }>("/auth/signup", {
-      method: "POST",
-      body: input,
-    });
-    setTokens(tokens.accessToken, tokens.refreshToken);
-    const me = await api<Me>("/auth/me");
-    setUser(me);
-    return me;
-  }, []);
-
   const logout = useCallback(async () => {
     const refreshToken = getRefreshToken();
     if (refreshToken) {
@@ -91,8 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, signup, logout, refresh }),
-    [user, loading, login, signup, logout, refresh],
+    () => ({ user, loading, login, logout, refresh }),
+    [user, loading, login, logout, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

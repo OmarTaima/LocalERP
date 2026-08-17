@@ -4,9 +4,9 @@ import type { Session } from "@erp/shared";
 
 const { model, models, Schema } = mongoose;
 
-export type SessionDoc = Omit<Session, "id" | "tenantId" | "userId" | "expiresAt" | "revokedAt"> & {
+export type SessionDoc = Omit<Session, "id" | "companyId" | "userId" | "expiresAt" | "revokedAt"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   userId: Types.ObjectId;
   expiresAt: Date;
   revokedAt: Date | null;
@@ -16,7 +16,7 @@ export type SessionDoc = Omit<Session, "id" | "tenantId" | "userId" | "expiresAt
 
 const sessionSchema = new Schema<SessionDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     tokenHash: { type: String, required: true },
     device: { type: String, default: "" },
@@ -27,7 +27,7 @@ const sessionSchema = new Schema<SessionDoc>(
   { timestamps: true },
 );
 
-sessionSchema.index({ tenantId: 1, userId: 1 });
+sessionSchema.index({ companyId: 1, userId: 1 });
 sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const SessionModel: Model<SessionDoc> =

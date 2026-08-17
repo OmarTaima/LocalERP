@@ -4,9 +4,9 @@ import type { Notification } from "@erp/shared";
 
 const { model, models, Schema } = mongoose;
 
-export type NotificationDoc = Omit<Notification, "id" | "tenantId" | "userId"> & {
+export type NotificationDoc = Omit<Notification, "id" | "companyId" | "userId"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   userId: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -14,7 +14,7 @@ export type NotificationDoc = Omit<Notification, "id" | "tenantId" | "userId"> &
 
 const notificationSchema = new Schema<NotificationDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     type: {
       type: String,
@@ -29,7 +29,7 @@ const notificationSchema = new Schema<NotificationDoc>(
   { timestamps: true },
 );
 
-notificationSchema.index({ tenantId: 1, userId: 1, isRead: 1, createdAt: -1 });
+notificationSchema.index({ companyId: 1, userId: 1, isRead: 1, createdAt: -1 });
 
 export const NotificationModel: Model<NotificationDoc> =
   (models.Notification as Model<NotificationDoc>) || model<NotificationDoc>("Notification", notificationSchema);

@@ -19,35 +19,35 @@ const API_ENDPOINTS: Record<CronJobName, string> = {
   "fx-sync": "/api/v1/reports/fx-revaluation",
 };
 
-const queue = new Queue<{ tenantId?: string }>("cron", { connection: { url: env.REDIS_URL } });
+const queue = new Queue<{ companyId?: string }>("cron", { connection: { url: env.REDIS_URL } });
 
 for (const job of CRON_JOBS) {
-  await queue.upsertJobScheduler(job.name, { pattern: job.pattern }, { name: job.name, data: { tenantId: undefined } });
+  await queue.upsertJobScheduler(job.name, { pattern: job.pattern }, { name: job.name, data: { companyId: undefined } });
 }
 
-async function runCronJob(jobName: CronJobName, tenantId: string): Promise<{ status: number }> {
+async function runCronJob(jobName: CronJobName, companyId: string): Promise<{ status: number }> {
   const response = await fetch(`${env.CRON_API_URL}${API_ENDPOINTS[jobName]}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.CRON_API_TOKEN}`,
       "Content-Type": "application/json",
-      "x-tenant-id": tenantId,
+      "x-company-id": companyId,
     },
   });
-  if (!response.ok) throw new Error(`${jobName} failed for tenant ${tenantId}: HTTP ${response.status}`);
+  if (!response.ok) throw new Error(`${jobName} failed for company ${companyId}: HTTP ${response.status}`);
   return { status: response.status };
 }
 
-const worker = new Worker<{ tenantId?: string; name?: CronJobName }>(
+const worker = new Worker<{ companyId?: string; name?: CronJobName }>(
   "cron",
-  async (job: Job<{ tenantId?: string; name?: CronJobName }>) => {
+  async (job: Job<{ companyId?: string; name?: CronJobName }>) => {
     const jobName = (job.data.name ?? job.name) as CronJobName;
-    const tenantIds = env.CRON_TENANT_IDS.split(",").map((tenantId) => tenantId.trim()).filter(Boolean);
+    const companyIds = env.CRON_COMPANY_IDS.split(",").map((companyId) => companyId.trim()).filter(Boolean);
     const results = [];
-    for (const tenantId of tenantIds) {
-      results.push(await runCronJob(jobName, tenantId));
+    for (const companyId of companyIds) {
+      results.push(await runCronJob(jobName, companyId));
     }
-    return { jobName, tenants: results.length };
+    return { jobName, companies: results.length };
   },
   { connection: { url: env.REDIS_URL } },
 );

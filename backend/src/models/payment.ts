@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { Payment } from "@erp/shared";
 
-export type PaymentDoc = Omit<Payment, "id" | "tenantId" | "orderId" | "paidAt"> & {
+export type PaymentDoc = Omit<Payment, "id" | "companyId" | "orderId" | "paidAt"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   orderId: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -15,7 +15,7 @@ const { Schema } = mongoose;
 
 const paymentSchema = new Schema<PaymentDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     orderId: { type: Schema.Types.ObjectId, ref: "SalesOrder", required: true },
     amount: { type: Number, required: true, min: 0 },
     method: { type: String, enum: ["card", "transfer", "cash", "refund"], required: true },
@@ -27,9 +27,9 @@ const paymentSchema = new Schema<PaymentDoc>(
   { timestamps: true },
 );
 
-paymentSchema.index({ tenantId: 1, orderId: 1 });
-paymentSchema.index({ tenantId: 1, idempotencyKey: 1 }, { unique: true });
-paymentSchema.index({ tenantId: 1, status: 1, paidAt: -1 });
+paymentSchema.index({ companyId: 1, orderId: 1 });
+paymentSchema.index({ companyId: 1, idempotencyKey: 1 }, { unique: true });
+paymentSchema.index({ companyId: 1, status: 1, paidAt: -1 });
 
 export const PaymentModel: Model<PaymentDoc> =
   (mongoose.models.Payment as Model<PaymentDoc>) || mongoose.model<PaymentDoc>("Payment", paymentSchema);

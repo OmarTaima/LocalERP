@@ -1,4 +1,4 @@
-import type { ID, Money, TenantScoped, Timestamps } from "./common";
+import type { ID, Money, CompanyScoped, Timestamps } from "./common";
 
 export type BomComponent = {
   productId: ID;
@@ -6,7 +6,7 @@ export type BomComponent = {
 };
 
 export type Bom = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     productId: ID;
     components: BomComponent[];
@@ -15,7 +15,7 @@ export type Bom = Timestamps &
   };
 
 export type WorkCenter = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     name: string;
     costPerHour: Money;
@@ -38,7 +38,7 @@ export type FinishedGood = {
 };
 
 export type WorkOrder = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     woNumber: string;
     bomId: ID;
@@ -61,7 +61,7 @@ export const MRP_STATUSES = ["open", "actioned", "dismissed"] as const;
 export type MrpStatus = (typeof MRP_STATUSES)[number];
 
 export type MrpSuggestion = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     productId: ID;
     warehouseId: ID;

@@ -1,10 +1,10 @@
-import type { ID, TenantScoped, Timestamps } from "./common";
+import type { ID, CompanyScoped, Timestamps } from "./common";
 
 export const AUDIT_ACTIONS = ["create", "update", "delete", "approve", "reject", "login", "export", "terminate", "pay"] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
 export type AuditLog = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     userId: ID;
     action: AuditAction;
@@ -28,7 +28,7 @@ export const NOTIFICATION_TYPES = [
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
 export type Notification = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     userId: ID;
     type: NotificationType;
@@ -39,7 +39,7 @@ export type Notification = Timestamps &
   };
 
 export type NotificationPreference = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     userId: ID;
     channels: {
@@ -55,7 +55,7 @@ export const IMPORT_TYPES = ["products", "customers", "orders", "employees"] as 
 export type ImportType = (typeof IMPORT_TYPES)[number];
 
 export type ImportJob = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     type: ImportType;
     fileUrl: string;
@@ -69,7 +69,7 @@ export type ImportJob = Timestamps &
   };
 
 export type ExportJob = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     type: ImportType;
     status: JobStatus;
@@ -78,7 +78,7 @@ export type ExportJob = Timestamps &
   };
 
 export type Setting = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     key: string;
     value: unknown;
@@ -87,7 +87,7 @@ export type Setting = Timestamps &
 export type FeatureFlag = Timestamps & {
   id: ID;
   key: string;
-  enabledForTenantIds: ID[];
+  enabledForCompanyIds: ID[];
   defaultEnabled: boolean;
 };
 

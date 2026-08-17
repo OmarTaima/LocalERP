@@ -17,9 +17,9 @@ import {
   type JournalEntryDoc,
 } from "../models";
 
-export async function listAccounts(tenantId: string) {
-  await seedDefaultAccounts(tenantId);
-  const docs = await AccountModel.find({ tenantId }).sort({ code: 1 }).lean();
+export async function listAccounts(companyId: string) {
+  await seedDefaultAccounts(companyId);
+  const docs = await AccountModel.find({ companyId }).sort({ code: 1 }).lean();
   return docs.map(serializeAccount);
 }
 
@@ -35,13 +35,13 @@ function serializeAccount(doc: AccountDoc) {
   };
 }
 
-export async function createAccount(tenantId: string, userId: string, input: { code: string; name: string; type: AccountDoc["type"]; parentId?: string | null; currency?: string | null }) {
+export async function createAccount(companyId: string, userId: string, input: { code: string; name: string; type: AccountDoc["type"]; parentId?: string | null; currency?: string | null }) {
   if (input.parentId) {
-    const parent = await AccountModel.findOne({ _id: input.parentId, tenantId });
+    const parent = await AccountModel.findOne({ _id: input.parentId, companyId });
     if (!parent) throw new AppError(400, "parent account does not exist");
   }
   const doc = await AccountModel.create({
-    tenantId,
+    companyId,
     code: input.code,
     name: input.name,
     type: input.type,
@@ -49,31 +49,31 @@ export async function createAccount(tenantId: string, userId: string, input: { c
     isSystem: false,
     currency: input.currency ?? null,
   });
-  await writeAudit({ tenantId, userId, action: "create", entity: "Account", entityId: doc._id.toString(), after: { code: doc.code, name: doc.name } });
+  await writeAudit({ companyId, userId, action: "create", entity: "Account", entityId: doc._id.toString(), after: { code: doc.code, name: doc.name } });
   return serializeAccount(doc);
 }
 
-export async function updateAccount(tenantId: string, userId: string, accountId: string, input: { name?: string; parentId?: string | null; currency?: string | null }) {
-  const doc = await AccountModel.findOne({ _id: accountId, tenantId });
+export async function updateAccount(companyId: string, userId: string, accountId: string, input: { name?: string; parentId?: string | null; currency?: string | null }) {
+  const doc = await AccountModel.findOne({ _id: accountId, companyId });
   if (!doc) throw new AppError(404, "account not found");
   if (doc.isSystem && input.parentId !== undefined) throw new AppError(400, "system accounts cannot be reparented");
   if (input.name !== undefined) doc.name = input.name;
   if (input.parentId !== undefined) {
     if (input.parentId && input.parentId === accountId) throw new AppError(400, "account cannot be its own parent");
     if (input.parentId) {
-      const parent = await AccountModel.findOne({ _id: input.parentId, tenantId });
+      const parent = await AccountModel.findOne({ _id: input.parentId, companyId });
       if (!parent) throw new AppError(400, "parent account does not exist");
     }
     doc.parentId = input.parentId ? new mongoose.Types.ObjectId(input.parentId) : null;
   }
   if (input.currency !== undefined) doc.currency = input.currency;
   await doc.save();
-  await writeAudit({ tenantId, userId, action: "update", entity: "Account", entityId: accountId, after: { name: doc.name } });
+  await writeAudit({ companyId, userId, action: "update", entity: "Account", entityId: accountId, after: { name: doc.name } });
   return serializeAccount(doc);
 }
 
-export async function seedAccounts(tenantId: string): Promise<number> {
-  return seedDefaultAccounts(tenantId);
+export async function seedAccounts(companyId: string): Promise<number> {
+  return seedDefaultAccounts(companyId);
 }
 
 export type JournalLineInput = {
@@ -86,16 +86,16 @@ export type JournalLineInput = {
 };
 
 export async function createJournalEntry(
-  tenantId: string,
+  companyId: string,
   userId: string,
   input: { date: string; description: string; reference: { type: string; id: string }; lines: JournalLineInput[] },
 ) {
   const accountIds = input.lines.map((line) => line.accountId);
-  const accounts = await AccountModel.find({ _id: { $in: accountIds }, tenantId }).lean();
+  const accounts = await AccountModel.find({ _id: { $in: accountIds }, companyId }).lean();
   if (accounts.length !== new Set(accountIds).size) throw new AppError(400, "one or more accounts do not exist");
   const doc = await JournalEntryModel.create({
-    tenantId,
-    entryNumber: await nextNumber(tenantId, "journal", "JE"),
+    companyId,
+    entryNumber: await nextNumber(companyId, "journal", "JE"),
     date: new Date(input.date),
     description: input.description,
     reference: input.reference,
@@ -111,8 +111,8 @@ export async function createJournalEntry(
     reversedById: null,
     createdBy: userId,
   });
-  await writeAudit({ tenantId, userId, action: "create", entity: "JournalEntry", entityId: doc._id.toString(), after: { entryNumber: doc.entryNumber, amount: input.lines.reduce((sum, line) => sum + line.debit, 0) } });
-  publish({ type: "finance.journal.posted", payload: { tenantId, entryId: doc._id.toString(), entryNumber: doc.entryNumber } });
+  await writeAudit({ companyId, userId, action: "create", entity: "JournalEntry", entityId: doc._id.toString(), after: { entryNumber: doc.entryNumber, amount: input.lines.reduce((sum, line) => sum + line.debit, 0) } });
+  publish({ type: "finance.journal.posted", payload: { companyId, entryId: doc._id.toString(), entryNumber: doc.entryNumber } });
   return serializeJournalEntry(doc);
 }
 
@@ -138,16 +138,16 @@ function serializeJournalEntry(doc: JournalEntryDoc) {
   };
 }
 
-export async function getJournalEntry(tenantId: string, entryId: string) {
-  const doc = await JournalEntryModel.findOne({ _id: entryId, tenantId });
+export async function getJournalEntry(companyId: string, entryId: string) {
+  const doc = await JournalEntryModel.findOne({ _id: entryId, companyId });
   if (!doc) throw new AppError(404, "journal entry not found");
   return serializeJournalEntry(doc);
 }
 
-export async function listJournalEntries(tenantId: string, query: { from?: string; to?: string; accountId?: string; page?: number; pageSize?: number }) {
+export async function listJournalEntries(companyId: string, query: { from?: string; to?: string; accountId?: string; page?: number; pageSize?: number }) {
   const page = Math.max(1, query.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
-  const filter: Record<string, unknown> = { tenantId };
+  const filter: Record<string, unknown> = { companyId };
   if (query.from || query.to) {
     filter.date = {
       ...(query.from ? { $gte: new Date(query.from) } : {}),
@@ -166,13 +166,13 @@ export async function listJournalEntries(tenantId: string, query: { from?: strin
   return { items: docs.map(serializeJournalEntry), total, page, pageSize };
 }
 
-export async function reverseJournalEntry(tenantId: string, userId: string, entryId: string) {
-  const original = await JournalEntryModel.findOne({ _id: entryId, tenantId });
+export async function reverseJournalEntry(companyId: string, userId: string, entryId: string) {
+  const original = await JournalEntryModel.findOne({ _id: entryId, companyId });
   if (!original) throw new AppError(404, "journal entry not found");
   if (original.status === "reversed") throw new AppError(400, "entry already reversed");
   const reversal = await JournalEntryModel.create({
-    tenantId,
-    entryNumber: await nextNumber(tenantId, "journal", "JE"),
+    companyId,
+    entryNumber: await nextNumber(companyId, "journal", "JE"),
     date: new Date(),
     description: `Reversal of ${original.entryNumber}`,
     reference: original.reference,
@@ -184,13 +184,13 @@ export async function reverseJournalEntry(tenantId: string, userId: string, entr
   original.status = "reversed";
   original.reversedById = reversal._id;
   await original.save();
-  await writeAudit({ tenantId, userId, action: "create", entity: "JournalEntry", entityId: reversal._id.toString(), after: { entryNumber: reversal.entryNumber, note: "reversal" } });
-  publish({ type: "finance.journal.reversed", payload: { tenantId, entryId: original._id.toString(), reversalId: reversal._id.toString() } });
+  await writeAudit({ companyId, userId, action: "create", entity: "JournalEntry", entityId: reversal._id.toString(), after: { entryNumber: reversal.entryNumber, note: "reversal" } });
+  publish({ type: "finance.journal.reversed", payload: { companyId, entryId: original._id.toString(), reversalId: reversal._id.toString() } });
   return serializeJournalEntry(reversal);
 }
 
-function postedEntriesFilter(tenantId: string, from?: string, to?: string, asOf?: string) {
-  const filter: Record<string, unknown> = { tenantId, status: "posted" };
+function postedEntriesFilter(companyId: string, from?: string, to?: string, asOf?: string) {
+  const filter: Record<string, unknown> = { companyId, status: "posted" };
   if (asOf) filter.date = { $lte: new Date(asOf) };
   else if (from || to) {
     filter.date = {
@@ -201,10 +201,10 @@ function postedEntriesFilter(tenantId: string, from?: string, to?: string, asOf?
   return filter;
 }
 
-export async function trialBalance(tenantId: string, query: { from?: string; to?: string }) {
-  await seedDefaultAccounts(tenantId);
+export async function trialBalance(companyId: string, query: { from?: string; to?: string }) {
+  await seedDefaultAccounts(companyId);
   const rows = await JournalEntryModel.aggregate([
-    { $match: postedEntriesFilter(tenantId, query.from, query.to) },
+    { $match: postedEntriesFilter(companyId, query.from, query.to) },
     { $unwind: "$lines" },
     {
       $group: {
@@ -215,7 +215,7 @@ export async function trialBalance(tenantId: string, query: { from?: string; to?
     },
   ]);
   const accountIds = rows.map((row) => row._id);
-  const accounts = await AccountModel.find({ _id: { $in: accountIds }, tenantId }).lean();
+  const accounts = await AccountModel.find({ _id: { $in: accountIds }, companyId }).lean();
   const accountMap = new Map(accounts.map((account) => [account._id.toString(), account]));
   const items = rows
     .map((row) => {
@@ -238,10 +238,10 @@ export async function trialBalance(tenantId: string, query: { from?: string; to?
   return { items, debitTotal: round2(debitTotal), creditTotal: round2(creditTotal), balanced: Math.abs(debitTotal - creditTotal) < 0.01 };
 }
 
-export async function profitAndLoss(tenantId: string, query: { from?: string; to?: string }) {
-  const entries = await JournalEntryModel.find(postedEntriesFilter(tenantId, query.from, query.to)).lean();
+export async function profitAndLoss(companyId: string, query: { from?: string; to?: string }) {
+  const entries = await JournalEntryModel.find(postedEntriesFilter(companyId, query.from, query.to)).lean();
   const accountIds = new Set(entries.flatMap((entry) => entry.lines.map((line) => line.accountId.toString())));
-  const accounts = await AccountModel.find({ _id: { $in: [...accountIds] }, tenantId }).lean();
+  const accounts = await AccountModel.find({ _id: { $in: [...accountIds] }, companyId }).lean();
   const accountMap = new Map(accounts.map((account) => [account._id.toString(), account]));
   const byAccount = new Map<string, { debit: number; credit: number }>();
   for (const entry of entries) {
@@ -280,10 +280,10 @@ export async function profitAndLoss(tenantId: string, query: { from?: string; to
   };
 }
 
-export async function balanceSheet(tenantId: string, query: { asOf?: string }) {
-  const entries = await JournalEntryModel.find(postedEntriesFilter(tenantId, undefined, undefined, query.asOf)).lean();
+export async function balanceSheet(companyId: string, query: { asOf?: string }) {
+  const entries = await JournalEntryModel.find(postedEntriesFilter(companyId, undefined, undefined, query.asOf)).lean();
   const accountIds = new Set(entries.flatMap((entry) => entry.lines.map((line) => line.accountId.toString())));
-  const accounts = await AccountModel.find({ _id: { $in: [...accountIds] }, tenantId }).lean();
+  const accounts = await AccountModel.find({ _id: { $in: [...accountIds] }, companyId }).lean();
   const accountMap = new Map(accounts.map((account) => [account._id.toString(), account]));
   const balances = new Map<string, number>();
   for (const entry of entries) {
@@ -327,12 +327,12 @@ export async function balanceSheet(tenantId: string, query: { asOf?: string }) {
   };
 }
 
-export async function aging(tenantId: string, query: { type: "ar" | "ap" }) {
+export async function aging(companyId: string, query: { type: "ar" | "ap" }) {
   const ar = query.type === "ar";
-  const account = await AccountModel.findOne({ tenantId, code: ar ? "1100" : "2000" });
+  const account = await AccountModel.findOne({ companyId, code: ar ? "1100" : "2000" });
   if (!account) return { type: query.type, buckets: { current: [], days31to60: [], days61to90: [], days91plus: [] }, totals: { current: 0, days31to60: 0, days61to90: 0, days91plus: 0 } };
   const referenceType = ar ? "order" : "purchase-order";
-  const entries = await JournalEntryModel.find({ tenantId, status: "posted", "reference.type": referenceType, "lines.accountId": account._id }).sort({ date: 1 }).lean();
+  const entries = await JournalEntryModel.find({ companyId, status: "posted", "reference.type": referenceType, "lines.accountId": account._id }).sort({ date: 1 }).lean();
   const now = Date.now();
   const buckets: Record<string, Array<{ reference: string; amount: number; date: string }>> = {
     current: [],
@@ -354,10 +354,10 @@ export async function aging(tenantId: string, query: { type: "ar" | "ap" }) {
   return { type: query.type, buckets, totals };
 }
 
-export async function listExpenses(tenantId: string, query: { category?: string; from?: string; to?: string; page?: number; pageSize?: number }) {
+export async function listExpenses(companyId: string, query: { category?: string; from?: string; to?: string; page?: number; pageSize?: number }) {
   const page = Math.max(1, query.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
-  const filter: Record<string, unknown> = { tenantId };
+  const filter: Record<string, unknown> = { companyId };
   if (query.category) filter.category = query.category;
   if (query.from || query.to) {
     filter.date = {
@@ -389,9 +389,9 @@ function serializeExpense(doc: ExpenseDoc) {
   };
 }
 
-export async function createExpense(tenantId: string, userId: string, input: { description: string; amount: number; category: string; date: string; receiptUrl?: string | null }) {
+export async function createExpense(companyId: string, userId: string, input: { description: string; amount: number; category: string; date: string; receiptUrl?: string | null }) {
   const doc = await ExpenseModel.create({
-    tenantId,
+    companyId,
     description: input.description,
     amount: input.amount,
     category: input.category,
@@ -399,19 +399,19 @@ export async function createExpense(tenantId: string, userId: string, input: { d
     paidBy: userId,
     receiptUrl: input.receiptUrl ?? null,
   });
-  await writeAudit({ tenantId, userId, action: "create", entity: "Expense", entityId: doc._id.toString(), after: { description: doc.description, amount: doc.amount } });
-  const entry = await postExpenseJournal(tenantId, userId, doc);
-  publish({ type: "finance.expense.created", payload: { tenantId, expenseId: doc._id.toString(), amount: doc.amount } });
+  await writeAudit({ companyId, userId, action: "create", entity: "Expense", entityId: doc._id.toString(), after: { description: doc.description, amount: doc.amount } });
+  const entry = await postExpenseJournal(companyId, userId, doc);
+  publish({ type: "finance.expense.created", payload: { companyId, expenseId: doc._id.toString(), amount: doc.amount } });
   return { ...serializeExpense(doc), journalEntryId: entry?.id ?? null };
 }
 
-async function postExpenseJournal(tenantId: string, userId: string, expense: ExpenseDoc) {
-  const expenseAccount = await AccountModel.findOne({ tenantId, code: "5100" });
-  const cashAccount = await AccountModel.findOne({ tenantId, code: "1000" });
+async function postExpenseJournal(companyId: string, userId: string, expense: ExpenseDoc) {
+  const expenseAccount = await AccountModel.findOne({ companyId, code: "5100" });
+  const cashAccount = await AccountModel.findOne({ companyId, code: "1000" });
   if (!expenseAccount || !cashAccount) return null;
   const doc = await JournalEntryModel.create({
-    tenantId,
-    entryNumber: await nextNumber(tenantId, "journal", "JE"),
+    companyId,
+    entryNumber: await nextNumber(companyId, "journal", "JE"),
     date: expense.date,
     description: `Expense: ${expense.description}`,
     reference: { type: "expense", id: expense._id.toString() },
@@ -426,8 +426,8 @@ async function postExpenseJournal(tenantId: string, userId: string, expense: Exp
   return { id: doc._id.toString(), entryNumber: doc.entryNumber };
 }
 
-export async function updateExpense(tenantId: string, userId: string, expenseId: string, input: Record<string, unknown>) {
-  const doc = await ExpenseModel.findOne({ _id: expenseId, tenantId });
+export async function updateExpense(companyId: string, userId: string, expenseId: string, input: Record<string, unknown>) {
+  const doc = await ExpenseModel.findOne({ _id: expenseId, companyId });
   if (!doc) throw new AppError(404, "expense not found");
   const before = { description: doc.description, amount: doc.amount, category: doc.category };
   for (const [key, value] of Object.entries(input)) {
@@ -438,28 +438,28 @@ export async function updateExpense(tenantId: string, userId: string, expenseId:
     }
   }
   await doc.save();
-  await writeAudit({ tenantId, userId, action: "update", entity: "Expense", entityId: expenseId, before, after: { description: doc.description, amount: doc.amount } });
+  await writeAudit({ companyId, userId, action: "update", entity: "Expense", entityId: expenseId, before, after: { description: doc.description, amount: doc.amount } });
   return serializeExpense(doc);
 }
 
-export async function deleteExpense(tenantId: string, userId: string, expenseId: string): Promise<void> {
-  const doc = await ExpenseModel.findOne({ _id: expenseId, tenantId });
+export async function deleteExpense(companyId: string, userId: string, expenseId: string): Promise<void> {
+  const doc = await ExpenseModel.findOne({ _id: expenseId, companyId });
   if (!doc) throw new AppError(404, "expense not found");
-  await writeAudit({ tenantId, userId, action: "delete", entity: "Expense", entityId: expenseId, before: { description: doc.description, amount: doc.amount } });
+  await writeAudit({ companyId, userId, action: "delete", entity: "Expense", entityId: expenseId, before: { description: doc.description, amount: doc.amount } });
   await doc.deleteOne();
 }
 
-export async function createExpenseClaim(tenantId: string, userId: string, input: { items: Array<{ description: string; amount: number; date: string; receiptUrl?: string }> }) {
+export async function createExpenseClaim(companyId: string, userId: string, input: { items: Array<{ description: string; amount: number; date: string; receiptUrl?: string }> }) {
   const total = round2(input.items.reduce((sum, item) => sum + item.amount, 0));
   const doc = await ExpenseClaimModel.create({
-    tenantId,
+    companyId,
     userId,
     items: input.items.map((item) => ({ ...item, date: new Date(item.date) })),
     total,
     status: "draft",
     approvalId: null,
   });
-  await writeAudit({ tenantId, userId, action: "create", entity: "ExpenseClaim", entityId: doc._id.toString(), after: { total: doc.total } });
+  await writeAudit({ companyId, userId, action: "create", entity: "ExpenseClaim", entityId: doc._id.toString(), after: { total: doc.total } });
   return serializeExpenseClaim(doc);
 }
 
@@ -475,10 +475,10 @@ function serializeExpenseClaim(doc: ExpenseClaimDoc) {
   };
 }
 
-export async function listExpenseClaims(tenantId: string, query: { status?: string; page?: number; pageSize?: number }) {
+export async function listExpenseClaims(companyId: string, query: { status?: string; page?: number; pageSize?: number }) {
   const page = Math.max(1, query.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
-  const filter: Record<string, unknown> = { tenantId };
+  const filter: Record<string, unknown> = { companyId };
   if (query.status) filter.status = query.status;
   const [docs, total] = await Promise.all([
     ExpenseClaimModel.find(filter)
@@ -491,8 +491,8 @@ export async function listExpenseClaims(tenantId: string, query: { status?: stri
   return { items: docs.map(serializeExpenseClaim), total, page, pageSize };
 }
 
-export async function updateExpenseClaimStatus(tenantId: string, userId: string, claimId: string, status: "submitted" | "approved" | "rejected" | "paid") {
-  const doc = await ExpenseClaimModel.findOne({ _id: claimId, tenantId });
+export async function updateExpenseClaimStatus(companyId: string, userId: string, claimId: string, status: "submitted" | "approved" | "rejected" | "paid") {
+  const doc = await ExpenseClaimModel.findOne({ _id: claimId, companyId });
   if (!doc) throw new AppError(404, "expense claim not found");
   const allowed: Record<string, string[]> = {
     draft: ["submitted"],
@@ -506,19 +506,19 @@ export async function updateExpenseClaimStatus(tenantId: string, userId: string,
   doc.status = status;
   await doc.save();
   if (status === "paid") {
-    await postClaimJournal(tenantId, userId, doc);
+    await postClaimJournal(companyId, userId, doc);
   }
-  await writeAudit({ tenantId, userId, action: "update", entity: "ExpenseClaim", entityId: claimId, after: { status: doc.status } });
+  await writeAudit({ companyId, userId, action: "update", entity: "ExpenseClaim", entityId: claimId, after: { status: doc.status } });
   return serializeExpenseClaim(doc);
 }
 
-async function postClaimJournal(tenantId: string, userId: string, claim: ExpenseClaimDoc) {
-  const expenseAccount = await AccountModel.findOne({ tenantId, code: "5100" });
-  const cashAccount = await AccountModel.findOne({ tenantId, code: "1000" });
+async function postClaimJournal(companyId: string, userId: string, claim: ExpenseClaimDoc) {
+  const expenseAccount = await AccountModel.findOne({ companyId, code: "5100" });
+  const cashAccount = await AccountModel.findOne({ companyId, code: "1000" });
   if (!expenseAccount || !cashAccount) return null;
   const doc = await JournalEntryModel.create({
-    tenantId,
-    entryNumber: await nextNumber(tenantId, "journal", "JE"),
+    companyId,
+    entryNumber: await nextNumber(companyId, "journal", "JE"),
     date: new Date(),
     description: `Expense claim payout ${claim._id.toString()}`,
     reference: { type: "expense-claim", id: claim._id.toString() },
@@ -533,14 +533,14 @@ async function postClaimJournal(tenantId: string, userId: string, claim: Expense
   return { id: doc._id.toString(), entryNumber: doc.entryNumber };
 }
 
-export async function upsertExchangeRate(tenantId: string, userId: string, input: { fromCurrency: string; toCurrency: string; rate: number; date?: string }) {
+export async function upsertExchangeRate(companyId: string, userId: string, input: { fromCurrency: string; toCurrency: string; rate: number; date?: string }) {
   const date = input.date ? new Date(input.date) : new Date();
   const doc = await ExchangeRateModel.findOneAndUpdate(
-    { tenantId, fromCurrency: input.fromCurrency, toCurrency: input.toCurrency, date },
+    { companyId, fromCurrency: input.fromCurrency, toCurrency: input.toCurrency, date },
     { rate: input.rate },
     { new: true, upsert: true },
   );
-  await writeAudit({ tenantId, userId, action: "create", entity: "ExchangeRate", entityId: doc._id.toString(), after: { from: doc.fromCurrency, to: doc.toCurrency, rate: doc.rate } });
+  await writeAudit({ companyId, userId, action: "create", entity: "ExchangeRate", entityId: doc._id.toString(), after: { from: doc.fromCurrency, to: doc.toCurrency, rate: doc.rate } });
   return serializeExchangeRate(doc);
 }
 
@@ -554,10 +554,10 @@ function serializeExchangeRate(doc: ExchangeRateDoc) {
   };
 }
 
-export async function listExchangeRates(tenantId: string, query: { fromCurrency?: string; toCurrency?: string; page?: number; pageSize?: number }) {
+export async function listExchangeRates(companyId: string, query: { fromCurrency?: string; toCurrency?: string; page?: number; pageSize?: number }) {
   const page = Math.max(1, query.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
-  const filter: Record<string, unknown> = { tenantId };
+  const filter: Record<string, unknown> = { companyId };
   if (query.fromCurrency) filter.fromCurrency = query.fromCurrency;
   if (query.toCurrency) filter.toCurrency = query.toCurrency;
   const [docs, total] = await Promise.all([

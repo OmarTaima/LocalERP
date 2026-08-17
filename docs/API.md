@@ -2,15 +2,14 @@
 
 Base URL: `/api/v1` — JSON. Errors: `{ "error": string }` with proper status codes.
 
-Auth: `Authorization: Bearer <jwt>` except public routes. Permission codes shown per route — see `docs/PERMISSIONS.md`. All responses are tenant-scoped by middleware.
+Auth: `Authorization: Bearer <jwt>` except public routes. Permission codes shown per route — see `docs/PERMISSIONS.md`. All responses are company-scoped by middleware. Company-user JWTs carry `{ sub, companyId, permissions, role }`; superadmin JWTs carry `{ sub, scope: "superadmin", permissions: ["superadmin"] }` and no `companyId`.
 
 ---
 
-## Auth & Tenancy
+## Auth, Admin & Companies
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
-| POST | `/auth/signup` | public | creates tenant + admin user, returns tokens |
 | POST | `/auth/login` | public | email/password → `{ accessToken, refreshToken }` |
 | POST | `/auth/2fa/setup` | auth | generates TOTP secret + recovery codes |
 | POST | `/auth/2fa/verify` | auth | verifies TOTP, enables 2FA |
@@ -24,9 +23,20 @@ Auth: `Authorization: Bearer <jwt>` except public routes. Permission codes shown
 | PATCH/DELETE | `/auth/users/:id` | `auth:users:write` | update / deactivate user |
 | GET/POST | `/auth/roles` | `auth:roles:read/write` | list / create roles |
 | PATCH/DELETE | `/auth/roles/:id` | `auth:roles:write` | update / delete role |
-| GET/PATCH | `/tenant/settings` | `tenant:read/write` | company settings (currency, taxRate) |
-| GET/POST | `/tenant/api-keys` | `tenant:write` | manage API keys for e-commerce |
-| DELETE | `/tenant/api-keys/:id` | `tenant:write` | revoke key |
+| GET/PATCH | `/company/settings` | `company:read/write` | company settings (currency, taxRate) |
+| GET/POST | `/company/api-keys` | `company:write` | manage API keys for e-commerce |
+| DELETE | `/company/api-keys/:id` | `company:write` | revoke key |
+
+### Platform admin (super-admin, separate JWT — no `companyId` claim)
+
+| Method | Path | Guard | Description |
+|---|---|---|---|
+| POST | `/admin/auth/login` | public | `{ email, password }` → `{ accessToken }` (7d, payload `{ sub, scope: "superadmin", permissions: ["superadmin"] }`) |
+| GET | `/admin/companies?page&pageSize` | `requireSuperAdmin` | list companies with `usersCount` |
+| POST | `/admin/companies` | `requireSuperAdmin` | `{ name, slug, plan?, settings? }` → creates Company + system roles (admin + presets) in one transaction; no user is created |
+| PATCH | `/admin/companies/:id` | `requireSuperAdmin` | update `plan` (resets limits), `isActive`, `limits` |
+| GET | `/admin/companies/:id/roles` | `requireSuperAdmin` | list the company's roles as `[{ id, name, permissions, isSystem }]` (system roles marked `isSystem: true`) — lets the console discover a role `id` to pass as `roleId` when creating the company's first admin user |
+| POST | `/admin/companies/:id/users` | `requireSuperAdmin` | `{ name, email, password, roleId? }` → creates a user inside the company (enforces `limits.maxUsers`, email uniqueness; defaults role to the company `user` preset) |
 
 ## Dashboard
 

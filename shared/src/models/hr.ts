@@ -1,7 +1,7 @@
-import type { ID, Money, TenantScoped, Timestamps } from "./common";
+import type { ID, Money, CompanyScoped, Timestamps } from "./common";
 
 export type Department = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     name: string;
     parentId: ID | null;
@@ -12,7 +12,7 @@ export const EMPLOYEE_STATUSES = ["active", "onLeave", "terminated"] as const;
 export type EmployeeStatus = (typeof EMPLOYEE_STATUSES)[number];
 
 export type Employee = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     userId: ID | null;
     name: string;
@@ -28,7 +28,7 @@ export const TIMESHEET_STATUSES = ["draft", "submitted", "approved"] as const;
 export type TimesheetStatus = (typeof TIMESHEET_STATUSES)[number];
 
 export type Timesheet = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     employeeId: ID;
     date: string;
@@ -39,7 +39,7 @@ export type Timesheet = Timestamps &
   };
 
 export type ShiftPattern = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     name: string;
     startTime: string;
@@ -51,7 +51,7 @@ export const ATTENDANCE_STATUSES = ["present", "absent", "leave", "holiday", "la
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
 
 export type Attendance = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     employeeId: ID;
     date: string;
@@ -67,7 +67,7 @@ export const LEAVE_STATUSES = ["pending", "approved", "rejected", "cancelled"] a
 export type LeaveStatus = (typeof LEAVE_STATUSES)[number];
 
 export type LeaveRequest = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     employeeId: ID;
     type: LeaveType;
@@ -92,7 +92,7 @@ export type PayrollEntry = {
 };
 
 export type PayrollRun = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     period: { month: number; year: number };
     entries: PayrollEntry[];

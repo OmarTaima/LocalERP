@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { LeaveRequest } from "@erp/shared";
 
-export type LeaveRequestDoc = Omit<LeaveRequest, "id" | "tenantId" | "employeeId" | "from" | "to" | "approvedBy" | "approvalId"> & {
+export type LeaveRequestDoc = Omit<LeaveRequest, "id" | "companyId" | "employeeId" | "from" | "to" | "approvedBy" | "approvalId"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   employeeId: Types.ObjectId;
   from: Date;
   to: Date;
@@ -18,7 +18,7 @@ const { Schema } = mongoose;
 
 const leaveRequestSchema = new Schema<LeaveRequestDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     employeeId: { type: Schema.Types.ObjectId, ref: "Employee", required: true },
     type: { type: String, enum: ["annual", "sick", "unpaid", "maternity", "paternity"], required: true },
     from: { type: Date, required: true },
@@ -31,8 +31,8 @@ const leaveRequestSchema = new Schema<LeaveRequestDoc>(
   { timestamps: true },
 );
 
-leaveRequestSchema.index({ tenantId: 1, employeeId: 1, status: 1 });
-leaveRequestSchema.index({ tenantId: 1, status: 1 });
+leaveRequestSchema.index({ companyId: 1, employeeId: 1, status: 1 });
+leaveRequestSchema.index({ companyId: 1, status: 1 });
 
 export const LeaveRequestModel: Model<LeaveRequestDoc> =
   (mongoose.models.LeaveRequest as Model<LeaveRequestDoc>) || mongoose.model<LeaveRequestDoc>("LeaveRequest", leaveRequestSchema);

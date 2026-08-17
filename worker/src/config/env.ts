@@ -6,7 +6,7 @@ const envSchema = Joi.object({
   REDIS_URL: Joi.string().default("redis://localhost:6379"),
   CRON_API_URL: Joi.string().default("http://localhost:4000"),
   CRON_API_TOKEN: Joi.string().default(""),
-  CRON_TENANT_IDS: Joi.string().default(""),
+  CRON_COMPANY_IDS: Joi.string().default(""),
 });
 
 const { value, error } = envSchema.validate(process.env, { allowUnknown: true, stripUnknown: true });
@@ -19,7 +19,7 @@ type Env = {
   REDIS_URL: string;
   CRON_API_URL: string;
   CRON_API_TOKEN: string;
-  CRON_TENANT_IDS: string;
+  CRON_COMPANY_IDS: string;
 };
 
 export const env = value as Env;

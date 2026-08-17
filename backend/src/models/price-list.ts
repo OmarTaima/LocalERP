@@ -4,9 +4,9 @@ import type { PriceList, PriceListItem } from "@erp/shared";
 
 const { Schema } = mongoose;
 
-export type PriceListDoc = Omit<PriceList, "id" | "tenantId" | "customerSegmentIds"> & {
+export type PriceListDoc = Omit<PriceList, "id" | "companyId" | "customerSegmentIds"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   customerSegmentIds: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
@@ -14,7 +14,7 @@ export type PriceListDoc = Omit<PriceList, "id" | "tenantId" | "customerSegmentI
 
 const priceListSchema = new Schema<PriceListDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     name: { type: String, required: true, trim: true },
     customerSegmentIds: { type: [Schema.Types.ObjectId], default: [] },
     isDefault: { type: Boolean, default: false },
@@ -22,14 +22,14 @@ const priceListSchema = new Schema<PriceListDoc>(
   { timestamps: true },
 );
 
-priceListSchema.index({ tenantId: 1, name: 1 }, { unique: true });
+priceListSchema.index({ companyId: 1, name: 1 }, { unique: true });
 
 export const PriceListModel: Model<PriceListDoc> =
   (mongoose.models.PriceList as Model<PriceListDoc>) || mongoose.model<PriceListDoc>("PriceList", priceListSchema);
 
-export type PriceListItemDoc = Omit<PriceListItem, "id" | "tenantId" | "priceListId" | "productId"> & {
+export type PriceListItemDoc = Omit<PriceListItem, "id" | "companyId" | "priceListId" | "productId"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   priceListId: Types.ObjectId;
   productId: Types.ObjectId;
   createdAt: Date;
@@ -38,7 +38,7 @@ export type PriceListItemDoc = Omit<PriceListItem, "id" | "tenantId" | "priceLis
 
 const priceListItemSchema = new Schema<PriceListItemDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     priceListId: { type: Schema.Types.ObjectId, ref: "PriceList", required: true },
     productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
     price: { type: Number, required: true, min: 0 },
@@ -47,7 +47,7 @@ const priceListItemSchema = new Schema<PriceListItemDoc>(
   { timestamps: true },
 );
 
-priceListItemSchema.index({ tenantId: 1, priceListId: 1, productId: 1 }, { unique: true });
+priceListItemSchema.index({ companyId: 1, priceListId: 1, productId: 1 }, { unique: true });
 
 export const PriceListItemModel: Model<PriceListItemDoc> =
   (mongoose.models.PriceListItem as Model<PriceListItemDoc>) ||

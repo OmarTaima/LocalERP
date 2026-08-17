@@ -4,9 +4,9 @@ import type { ApiKey } from "@erp/shared";
 
 const { model, models, Schema } = mongoose;
 
-export type ApiKeyDoc = Omit<ApiKey, "id" | "tenantId" | "lastUsedAt" | "revokedAt"> & {
+export type ApiKeyDoc = Omit<ApiKey, "id" | "companyId" | "lastUsedAt" | "revokedAt"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   lastUsedAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
@@ -15,7 +15,7 @@ export type ApiKeyDoc = Omit<ApiKey, "id" | "tenantId" | "lastUsedAt" | "revoked
 
 const apiKeySchema = new Schema<ApiKeyDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     name: { type: String, required: true },
     keyHash: { type: String, required: true, unique: true },
     permissions: { type: [String], required: true },

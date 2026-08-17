@@ -1,5 +1,7 @@
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import type { AddressInfo } from "node:net";
+import bcrypt from "bcryptjs";
+import { RoleModel, SuperAdminModel } from "../models";
 
 async function run(): Promise<void> {
   const mongod = await MongoMemoryReplSet.create({ replSet: { name: "rs0", count: 1 } });
@@ -27,11 +29,38 @@ async function run(): Promise<void> {
     console.log(`  ok: ${message}`);
   };
 
-  const signup = await request("/auth/signup", {
-    method: "POST",
-    body: JSON.stringify({ companyName: "Acme Corp", name: "Omar Taimaa", email: "omar@acme.com", password: "SecurePass1" }),
+  await SuperAdminModel.create({
+    email: "superadmin@smoke.com",
+    name: "Smoke Super Admin",
+    passwordHash: await bcrypt.hash("SmokePass1", 12),
   });
-  expect(signup.status === 201 && typeof signup.body.accessToken === "string", "signup provisions tenant + admin and returns tokens");
+
+  const superadminLogin = await request("/admin/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email: "superadmin@smoke.com", password: "SmokePass1" }),
+  });
+  expect(superadminLogin.status === 200 && typeof superadminLogin.body.accessToken === "string", "superadmin login returns token");
+  const adminHeaders = { authorization: `Bearer ${superadminLogin.body.accessToken as string}` };
+  const adminJsonHeaders = { "content-type": "application/json", ...adminHeaders };
+
+  const createdCompany = await request("/admin/companies", {
+    method: "POST",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ name: "Acme Corp", slug: "acme-corp", plan: "enterprise" }),
+  });
+  expect(createdCompany.status === 201 && (createdCompany.body as { slug: string }).slug === "acme-corp", "superadmin provisions a company");
+  const companyId = (createdCompany.body as { id: string }).id;
+
+  const companyList = await request("/admin/companies", { headers: adminHeaders });
+  expect((companyList.body as { total: number }).total === 1 && (companyList.body as { items: Array<{ usersCount: number }> }).items[0].usersCount === 0, "company list reports usersCount per company");
+
+  const adminRole = await RoleModel.findOne({ companyId, name: "admin" });
+  const createdUser = await request(`/admin/companies/${companyId}/users`, {
+    method: "POST",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ name: "Omar Taimaa", email: "omar@acme.com", password: "SecurePass1", roleId: adminRole!._id.toString() }),
+  });
+  expect(createdUser.status === 201 && (createdUser.body as { roleId: string }).roleId === adminRole!._id.toString(), "superadmin creates a company user");
 
   const badLogin = await request("/auth/login", {
     method: "POST",
@@ -58,7 +87,7 @@ async function run(): Promise<void> {
   expect(users.status === 200 && (users.body as { total?: number }).total === 1, "GET /users returns the admin user");
 
   const roles = await request("/roles", { headers: authHeaders });
-  expect(roles.status === 200 && (roles.body as { total?: number }).total === 5, "system roles seeded (admin + 4 presets)");
+  expect(roles.status === 200 && (roles.body as { total?: number }).total === 6, "system roles seeded (admin + 5 presets)");
 
   const invalidRole = await request("/roles", {
     method: "POST",
@@ -66,6 +95,22 @@ async function run(): Promise<void> {
     body: JSON.stringify({ name: "bad role", permissions: ["nonsense"] }),
   });
   expect(invalidRole.status === 400, "invalid role payload rejected by Joi with 400");
+
+  const adminCompanyRoles = await request(`/admin/companies/${companyId}/roles`, { headers: adminHeaders });
+  expect(
+    adminCompanyRoles.status === 200 &&
+      (adminCompanyRoles.body as unknown as Array<{ name: string; permissions: string[]; isSystem: boolean }>).some(
+        (role) => role.name === "admin" && role.isSystem && role.permissions.includes("auth:users:read"),
+      ),
+    "superadmin can list company roles for first-admin provisioning",
+  );
+
+  const authPermissionRole = await request("/roles", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({ name: "Auth Operator", permissions: ["auth:users:read", "auth:roles:write", "catalog:read"] }),
+  });
+  expect(authPermissionRole.status === 201, "role with 3-segment auth:* permissions accepted by Joi");
 
   const audit = await request("/audit-logs", { headers: authHeaders });
   expect(audit.status === 200 && ((audit.body as { total?: number }).total ?? 0) >= 1, "audit log records login event");
@@ -557,7 +602,7 @@ async function run(): Promise<void> {
   server.close();
   await mongooseDisconnect();
   await mongod.stop();
-  console.log("\nSMOKE TEST PASSED — auth, tenancy, catalog, inventory, MRP, sales, finance, purchasing, manufacturing, HR, system verified end-to-end");
+  console.log("\nSMOKE TEST PASSED — auth, company scoping, catalog, inventory, MRP, sales, finance, purchasing, manufacturing, HR, system verified end-to-end");
 }
 
 import mongoose from "mongoose";

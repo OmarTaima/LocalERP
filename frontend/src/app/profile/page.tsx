@@ -26,7 +26,7 @@ type CurrentUser = {
   email: string;
   name: string;
   roleId: string;
-  tenantId: string;
+  companyId: string;
   plan: string;
   permissions: string[];
   roleName: string;

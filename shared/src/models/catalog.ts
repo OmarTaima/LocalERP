@@ -1,7 +1,7 @@
-import type { ID, Money, TenantScoped, Timestamps } from "./common";
+import type { ID, Money, CompanyScoped, Timestamps } from "./common";
 
 export type Category = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     name: string;
     slug: string;
@@ -19,7 +19,7 @@ export type ProductVariant = {
 };
 
 export type Product = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     sku: string;
     name: string;
@@ -37,7 +37,7 @@ export type Product = Timestamps &
   };
 
 export type Batch = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     productId: ID;
     lotNumber: string;
@@ -48,7 +48,7 @@ export type Batch = Timestamps &
   };
 
 export type PriceList = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     name: string;
     customerSegmentIds: ID[];
@@ -56,7 +56,7 @@ export type PriceList = Timestamps &
   };
 
 export type PriceListItem = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     priceListId: ID;
     productId: ID;
@@ -67,7 +67,7 @@ export type PriceListItem = Timestamps &
 export type TaxAppliesTo = "product" | "category" | "region";
 
 export type TaxRule = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     name: string;
     rate: number;
@@ -78,7 +78,7 @@ export type TaxRule = Timestamps &
   };
 
 export type ReorderRule = Timestamps &
-  TenantScoped & {
+  CompanyScoped & {
     id: ID;
     productId: ID;
     warehouseId: ID;

@@ -1,14 +1,14 @@
 # Data Model
 
-All Mongoose models. **Every model carries `tenantId`** (except `Tenant` itself). All compound indexes start with `tenantId`. All models include `createdAt` / `updatedAt` timestamps.
+All Mongoose models. **Every model carries `companyId`** (except `Company` and `SuperAdmin` themselves). All compound indexes start with `companyId`. All models include `createdAt` / `updatedAt` timestamps.
 
 Legend: `T` = text search index, `U` = unique, `S` = sparse.
 
 ---
 
-## Tenancy
+## Companies
 
-### Tenant
+### Company
 | Field | Type | Notes |
 |---|---|---|
 | name | string | required |
@@ -21,14 +21,26 @@ Legend: `T` = text search index, `U` = unique, `S` = sparse.
 
 Indexes: `{ slug: 1 } U`
 
+Created only by platform super-admins (`POST /api/v1/admin/companies`). Company creation and user creation are separate operations.
+
 ---
 
 ## Auth & Security
 
+### SuperAdmin (platform)
+| Field | Type | Notes |
+|---|---|---|
+| email | string | required, lowercase, unique |
+| name | string | required |
+| passwordHash | string | bcrypt, never returned |
+| createdAt / updatedAt | date | |
+
+Not company-scoped. Authenticates via `POST /api/v1/admin/auth/login`; JWT carries `scope: "superadmin"` and no `companyId`. No Session documents are created for superadmins.
+
 ### User
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | email | string | required, lowercase |
 | passwordHash | string | bcrypt, never returned |
 | name | string | required |
@@ -37,22 +49,22 @@ Indexes: `{ slug: 1 } U`
 | lastLoginAt | date | nullable |
 | mustChangePassword | boolean | default false |
 
-Indexes: `{ tenantId, email } U`, `{ tenantId, roleId }`
+Indexes: `{ companyId, email } U`, `{ companyId, roleId }`
 
 ### Role
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | name | string | e.g. `admin`, `manager`, `support` |
 | permissions | string[] | granular codes — see `docs/PERMISSIONS.md` |
 | isSystem | boolean | system roles not deletable |
 
-Indexes: `{ tenantId, name } U`
+Indexes: `{ companyId, name } U`
 
 ### Session
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | userId | ObjectId | |
 | tokenHash | string | hashed refresh token |
 | device | string | user agent |
@@ -60,12 +72,12 @@ Indexes: `{ tenantId, name } U`
 | expiresAt | date | TTL index for cleanup |
 | revokedAt | date | nullable |
 
-Indexes: `{ tenantId, userId }`, `{ expiresAt } S`
+Indexes: `{ companyId, userId }`, `{ expiresAt } S`
 
 ### ApiKey
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | for future e-commerce storefronts |
+| companyId | ObjectId | for future e-commerce storefronts |
 | name | string | |
 | keyHash | string | SHA-256, shown once on creation |
 | permissions | string[] | scoped, e.g. `catalog:read`, `sales:write` |
@@ -77,14 +89,14 @@ Indexes: `{ keyHash } U`
 ### TwoFactor
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | userId | ObjectId | unique per user |
 | secretEncrypted | string | |
 | recoveryCodes | string[] | hashed |
 | enabled | boolean | default false |
 | verifiedAt | date | nullable |
 
-Indexes: `{ tenantId, userId } U`
+Indexes: `{ companyId, userId } U`
 
 ---
 
@@ -93,18 +105,18 @@ Indexes: `{ tenantId, userId } U`
 ### Category
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | name | string | required |
 | slug | string | |
 | parentId | ObjectId → Category | nullable, tree |
 | order | number | display order |
 
-Indexes: `{ tenantId, parentId }`
+Indexes: `{ companyId, parentId }`
 
 ### Product
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | sku | string | required |
 | name | string | required, T |
 | description | string | T |
@@ -119,12 +131,12 @@ Indexes: `{ tenantId, parentId }`
 | variants | [{ name: string, options: string[], sku: string, price?: number, cost?: number, barcode?: string }] | optional |
 | version | number | optimistic lock |
 
-Indexes: `{ tenantId, sku } U`, `{ tenantId, categoryId }`, `{ tenantId, name: "text" } T`, `{ tenantId, isActive, lowStockThreshold }`
+Indexes: `{ companyId, sku } U`, `{ companyId, categoryId }`, `{ companyId, name: "text" } T`, `{ companyId, isActive, lowStockThreshold }`
 
 ### Batch (lot tracking)
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | productId | ObjectId | |
 | lotNumber | string | required |
 | expiryDate | date | nullable |
@@ -132,22 +144,22 @@ Indexes: `{ tenantId, sku } U`, `{ tenantId, categoryId }`, `{ tenantId, name: "
 | supplierId | ObjectId | nullable |
 | receivedAt | date | |
 
-Indexes: `{ tenantId, productId, lotNumber } U`, `{ tenantId, expiryDate }`
+Indexes: `{ companyId, productId, lotNumber } U`, `{ companyId, expiryDate }`
 
 ### PriceList / PriceListItem
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | name | string | e.g. `wholesale`, `retail` |
 | customerSegmentIds | ObjectId[] | applicable segments |
 | isDefault | boolean | |
 
-PriceListItem: `tenantId`, `priceListId`, `productId`, `price`, `minQuantity`, index `{ tenantId, priceListId, productId } U`
+PriceListItem: `companyId`, `priceListId`, `productId`, `price`, `minQuantity`, index `{ companyId, priceListId, productId } U`
 
 ### TaxRule
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | name | string | e.g. VAT 20% |
 | rate | number | percent |
 | appliesTo | `product\|category\|region` | |
@@ -155,19 +167,19 @@ PriceListItem: `tenantId`, `priceListId`, `productId`, `price`, `minQuantity`, i
 | categoryId | ObjectId | nullable |
 | isActive | boolean | |
 
-Indexes: `{ tenantId, appliesTo, region }`
+Indexes: `{ companyId, appliesTo, region }`
 
 ### ReorderRule
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | productId | ObjectId | |
 | warehouseId | ObjectId | |
 | minQuantity | number | |
 | maxQuantity | number | |
 | enabled | boolean | |
 
-Indexes: `{ tenantId, productId, warehouseId } U`
+Indexes: `{ companyId, productId, warehouseId } U`
 
 ---
 
@@ -176,7 +188,7 @@ Indexes: `{ tenantId, productId, warehouseId } U`
 ### Warehouse
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | name | string | required |
 | address | string | |
 | isDefault | boolean | |
@@ -185,18 +197,18 @@ Indexes: `{ tenantId, productId, warehouseId } U`
 ### Inventory
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | productId | ObjectId | |
 | warehouseId | ObjectId | |
 | quantity | number | current stock |
 | version | number | optimistic lock |
 
-Indexes: `{ tenantId, productId, warehouseId } U`, `{ tenantId, quantity }`
+Indexes: `{ companyId, productId, warehouseId } U`, `{ companyId, quantity }`
 
 ### StockMovement (immutable ledger)
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | productId | ObjectId | |
 | warehouseId | ObjectId | |
 | batchId | ObjectId | nullable |
@@ -206,12 +218,12 @@ Indexes: `{ tenantId, productId, warehouseId } U`, `{ tenantId, quantity }`
 | note | string | |
 | userId | ObjectId | actor |
 
-Indexes: `{ tenantId, productId, createdAt }`, `{ tenantId, referenceId }`, `{ tenantId, createdAt }`
+Indexes: `{ companyId, productId, createdAt }`, `{ companyId, referenceId }`, `{ companyId, createdAt }`
 
 ### Transfer
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | fromWarehouseId | ObjectId | |
 | toWarehouseId | ObjectId | |
 | items | [{ productId, quantity, batchId? }] | |
@@ -226,7 +238,7 @@ Indexes: `{ tenantId, productId, createdAt }`, `{ tenantId, referenceId }`, `{ t
 ### Customer
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | email | string | |
 | name | string | required |
 | phone | string | |
@@ -238,13 +250,13 @@ Indexes: `{ tenantId, productId, createdAt }`, `{ tenantId, referenceId }`, `{ t
 | totalSpent | number | denormalized |
 | status | `active\|inactive` | |
 
-Indexes: `{ tenantId, email } U`, `{ tenantId, name: "text" } T`
+Indexes: `{ companyId, email } U`, `{ companyId, name: "text" } T`
 
 ### Quote
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
-| quoteNumber | string | sequential per tenant |
+| companyId | ObjectId | |
+| quoteNumber | string | sequential per company |
 | customerId | ObjectId | |
 | items | [{ productId, name, sku, quantity, unitPrice, taxRate }] | |
 | totals | { subtotal, tax, discount, total } | |
@@ -252,13 +264,13 @@ Indexes: `{ tenantId, email } U`, `{ tenantId, name: "text" } T`
 | validUntil | date | |
 | version | number | |
 
-Indexes: `{ tenantId, quoteNumber } U`, `{ tenantId, customerId, createdAt }`
+Indexes: `{ companyId, quoteNumber } U`, `{ companyId, customerId, createdAt }`
 
 ### SalesOrder
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
-| orderNumber | string | sequential per tenant |
+| companyId | ObjectId | |
+| orderNumber | string | sequential per company |
 | customerId | ObjectId | required |
 | quoteId | ObjectId | nullable (conversion) |
 | items | [{ productId, name, sku, quantity, unitPrice, taxRate, batchId? }] | |
@@ -269,12 +281,12 @@ Indexes: `{ tenantId, quoteNumber } U`, `{ tenantId, customerId, createdAt }`
 | idempotencyKey | string | unique |
 | version | number | |
 
-Indexes: `{ tenantId, orderNumber } U`, `{ tenantId, customerId, createdAt }`, `{ tenantId, status }`, `{ tenantId, idempotencyKey } U`
+Indexes: `{ companyId, orderNumber } U`, `{ companyId, customerId, createdAt }`, `{ companyId, status }`, `{ companyId, idempotencyKey } U`
 
 ### Payment
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | orderId | ObjectId | |
 | amount | number | |
 | method | `card\|transfer\|cash\|refund` | |
@@ -283,12 +295,12 @@ Indexes: `{ tenantId, orderNumber } U`, `{ tenantId, customerId, createdAt }`, `
 | idempotencyKey | string | unique |
 | paidAt | date | |
 
-Indexes: `{ tenantId, orderId }`, `{ tenantId, idempotencyKey } U`, `{ tenantId, status, paidAt }`
+Indexes: `{ companyId, orderId }`, `{ companyId, idempotencyKey } U`, `{ companyId, status, paidAt }`
 
 ### Shipment
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | orderId | ObjectId | |
 | carrier | string | |
 | trackingNumber | string | |
@@ -299,7 +311,7 @@ Indexes: `{ tenantId, orderId }`, `{ tenantId, idempotencyKey } U`, `{ tenantId,
 ### RMA (return)
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | rmaNumber | string | sequential |
 | orderId | ObjectId | |
 | items | [{ productId, quantity, batchId?, condition }] | |
@@ -310,7 +322,7 @@ Indexes: `{ tenantId, orderId }`, `{ tenantId, idempotencyKey } U`, `{ tenantId,
 ### RecurringInvoice
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | customerId | ObjectId | |
 | items | [{ productId?, name, quantity, unitPrice }] | |
 | interval | `weekly\|monthly\|quarterly\|yearly` | |
@@ -325,7 +337,7 @@ Indexes: `{ tenantId, orderId }`, `{ tenantId, idempotencyKey } U`, `{ tenantId,
 ### Supplier
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | name | string | required |
 | contactName | string | |
 | email / phone | string | |
@@ -333,13 +345,13 @@ Indexes: `{ tenantId, orderId }`, `{ tenantId, idempotencyKey } U`, `{ tenantId,
 | paymentTerms | string | |
 | isActive | boolean | |
 
-Indexes: `{ tenantId, name: "text" } T`
+Indexes: `{ companyId, name: "text" } T`
 
 ### PurchaseOrder
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
-| poNumber | string | sequential per tenant |
+| companyId | ObjectId | |
+| poNumber | string | sequential per company |
 | supplierId | ObjectId | required |
 | items | [{ productId, quantity, unitCost, batchId? }] | |
 | expectedDate | date | |
@@ -348,7 +360,7 @@ Indexes: `{ tenantId, name: "text" } T`
 | grns | [{ grnNumber, receivedAt, items[] }] | goods received notes |
 | version | number | |
 
-Indexes: `{ tenantId, poNumber } U`, `{ tenantId, supplierId, createdAt }`
+Indexes: `{ companyId, poNumber } U`, `{ companyId, supplierId, createdAt }`
 
 ---
 
@@ -357,7 +369,7 @@ Indexes: `{ tenantId, poNumber } U`, `{ tenantId, supplierId, createdAt }`
 ### Account (chart of accounts)
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | code | string | e.g. `1100` |
 | name | string | e.g. `Accounts Receivable` |
 | type | `asset\|liability\|equity\|revenue\|expense\|contra` | |
@@ -365,12 +377,12 @@ Indexes: `{ tenantId, poNumber } U`, `{ tenantId, supplierId, createdAt }`
 | isSystem | boolean | seeded defaults not deletable |
 | currency | string | nullable — foreign-currency accounts |
 
-Indexes: `{ tenantId, code } U`
+Indexes: `{ companyId, code } U`
 
 ### JournalEntry
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | entryNumber | string | sequential |
 | date | date | |
 | description | string | |
@@ -380,7 +392,7 @@ Indexes: `{ tenantId, code } U`
 | reversedById | ObjectId | nullable |
 | createdBy | ObjectId | |
 
-Indexes: `{ tenantId, entryNumber } U`, `{ tenantId, date }`, `{ tenantId, "reference.type", "reference.id" }`
+Indexes: `{ companyId, entryNumber } U`, `{ companyId, date }`, `{ companyId, "reference.type", "reference.id" }`
 
 ### JournalLine
 | Field | Type | Notes |
@@ -399,18 +411,18 @@ Indexes: `{ tenantId, entryNumber } U`, `{ tenantId, date }`, `{ tenantId, "refe
 ### BOM (bill of materials)
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | productId | ObjectId | finished good |
 | components | [{ productId, quantity }] | |
 | outputQuantity | number | default 1 |
 | version | number | |
 
-Indexes: `{ tenantId, productId } U`
+Indexes: `{ companyId, productId } U`
 
 ### WorkCenter
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | name | string | |
 | costPerHour | number | |
 | capacity | number | hours/day |
@@ -419,7 +431,7 @@ Indexes: `{ tenantId, productId } U`
 ### WorkOrder
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | woNumber | string | sequential |
 | bomId | ObjectId | |
 | productId | ObjectId | output product |
@@ -432,12 +444,12 @@ Indexes: `{ tenantId, productId } U`
 | unitCost | number | cost rollup result |
 | startedAt / completedAt | date | |
 
-Indexes: `{ tenantId, woNumber } U`, `{ tenantId, status }`
+Indexes: `{ companyId, woNumber } U`, `{ companyId, status }`
 
 ### MRP suggestion
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | productId | ObjectId | |
 | warehouseId | ObjectId | |
 | type | `purchase\|produce` | |
@@ -452,7 +464,7 @@ Indexes: `{ tenantId, woNumber } U`, `{ tenantId, status }`
 ### Expense
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | description | string | |
 | amount | number | |
 | category | string | |
@@ -463,7 +475,7 @@ Indexes: `{ tenantId, woNumber } U`, `{ tenantId, status }`
 ### ExpenseClaim
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | userId | ObjectId | claimant |
 | items | [{ description, amount, date, receiptUrl? }] | |
 | total | number | |
@@ -473,12 +485,12 @@ Indexes: `{ tenantId, woNumber } U`, `{ tenantId, status }`
 ### ExchangeRate
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | fromCurrency / toCurrency | string | |
 | rate | number | |
 | date | date | |
 
-Indexes: `{ tenantId, fromCurrency, toCurrency, date } U`
+Indexes: `{ companyId, fromCurrency, toCurrency, date } U`
 
 ---
 
@@ -487,7 +499,7 @@ Indexes: `{ tenantId, fromCurrency, toCurrency, date } U`
 ### Department
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | name | string | |
 | parentId | ObjectId | nullable, tree |
 | headUserId | ObjectId | nullable |
@@ -495,7 +507,7 @@ Indexes: `{ tenantId, fromCurrency, toCurrency, date } U`
 ### Employee
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | userId | ObjectId | nullable — link to login |
 | name | string | required |
 | email | string | |
@@ -505,24 +517,24 @@ Indexes: `{ tenantId, fromCurrency, toCurrency, date } U`
 | hireDate | date | |
 | status | `active\|onLeave\|terminated` | |
 
-Indexes: `{ tenantId, departmentId }`, `{ tenantId, email } U S`
+Indexes: `{ companyId, departmentId }`, `{ companyId, email } U S`
 
 ### Timesheet
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | employeeId | ObjectId | |
 | date | date | |
 | hours | number | |
 | project / notes | string | |
 | status | `draft\|submitted\|approved` | |
 
-Indexes: `{ tenantId, employeeId, date } U`
+Indexes: `{ companyId, employeeId, date } U`
 
 ### ShiftPattern
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | name | string | e.g. `morning` |
 | startTime / endTime | string | |
 | days | number[] | weekdays |
@@ -530,19 +542,19 @@ Indexes: `{ tenantId, employeeId, date } U`
 ### Attendance
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | employeeId | ObjectId | |
 | date | date | |
 | status | `present\|absent\|leave\|holiday\|late` | |
 | shiftPatternId | ObjectId | nullable |
 | note | string | |
 
-Indexes: `{ tenantId, employeeId, date } U`, `{ tenantId, date, status }`
+Indexes: `{ companyId, employeeId, date } U`, `{ companyId, date, status }`
 
 ### LeaveRequest
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | employeeId | ObjectId | |
 | type | `annual\|sick\|unpaid\|maternity\|paternity` | |
 | from / to | date | |
@@ -554,13 +566,13 @@ Indexes: `{ tenantId, employeeId, date } U`, `{ tenantId, date, status }`
 ### PayrollRun
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | period | { month, year } | |
 | entries | [{ employeeId, gross, deductions, tax, net, status }] | |
 | status | `draft\|paid` | |
 | paidAt | date | nullable |
 
-Indexes: `{ tenantId, period.month, period.year } U`
+Indexes: `{ companyId, period.month, period.year } U`
 
 ---
 
@@ -569,7 +581,7 @@ Indexes: `{ tenantId, period.month, period.year } U`
 ### AuditLog
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | userId | ObjectId | actor |
 | action | `create\|update\|delete\|approve\|reject\|login\|export` | |
 | entity | string | model name |
@@ -577,31 +589,31 @@ Indexes: `{ tenantId, period.month, period.year } U`
 | changes | { before?: object, after?: object } | field-level diff |
 | ip | string | |
 
-Indexes: `{ tenantId, createdAt }`, `{ tenantId, entity, entityId }`, `{ tenantId, userId, createdAt }`
+Indexes: `{ companyId, createdAt }`, `{ companyId, entity, entityId }`, `{ companyId, userId, createdAt }`
 
 ### Notification
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | userId | ObjectId | recipient |
 | type | `stock-alert\|order\|approval\|invoice\|leave\|system` | |
 | title / body | string | |
 | link | string | deep link |
 | isRead | boolean | default false |
 
-Indexes: `{ tenantId, userId, isRead, createdAt }`
+Indexes: `{ companyId, userId, isRead, createdAt }`
 
 ### NotificationPreference
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | userId | ObjectId | unique |
 | channels | { inApp: boolean, email: boolean } | |
 
 ### ImportJob / ExportJob
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | type | `products\|customers\|orders\|employees` | |
 | fileUrl | string | |
 | status | `queued\|processing\|done\|failed` | |
@@ -611,17 +623,17 @@ Indexes: `{ tenantId, userId, isRead, createdAt }`
 ### Setting
 | Field | Type | Notes |
 |---|---|---|
-| tenantId | ObjectId | |
+| companyId | ObjectId | |
 | key | string | |
 | value | mixed | |
 
-Indexes: `{ tenantId, key } U`
+Indexes: `{ companyId, key } U`
 
 ### FeatureFlag
 | Field | Type | Notes |
 |---|---|---|
 | key | string | global flag |
-| enabledForTenantIds | ObjectId[] | opt-in list |
+| enabledForCompanyIds | ObjectId[] | opt-in list |
 | defaultEnabled | boolean | |
 
 ### PlanLimit
@@ -636,7 +648,7 @@ Indexes: `{ tenantId, key } U`
 ## Relationships map (summary)
 
 ```
-Tenant ─┬─ User ─ Role, Session, TwoFactor, ApiKey
+Company ─┬─ User ─ Role, Session, TwoFactor, ApiKey
         ├─ Product ─ Category, Batch, Inventory, StockMovement, BOM, ReorderRule, PriceListItem, TaxRule
         ├─ SalesOrder ─ Customer, Quote, Payment, Shipment, RMA, RecurringInvoice, Invoice
         ├─ PurchaseOrder ─ Supplier, ApprovalRequest, GRN

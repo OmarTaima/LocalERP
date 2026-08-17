@@ -1,11 +1,26 @@
-import type { Category, Product } from "@erp/shared";
+import type { Category, Company, Product } from "@erp/shared";
 import type { CategoryDoc } from "../models/category";
+import type { CompanyDoc } from "../models/company";
 import type { ProductDoc } from "../models/product";
+
+export function serializeCompany(doc: CompanyDoc): Company {
+  return {
+    id: doc._id.toString(),
+    name: doc.name,
+    slug: doc.slug,
+    plan: doc.plan,
+    isActive: doc.isActive,
+    settings: doc.settings,
+    limits: doc.limits,
+    createdAt: doc.createdAt.toISOString(),
+    updatedAt: doc.updatedAt.toISOString(),
+  };
+}
 
 export function serializeCategory(doc: CategoryDoc): Category {
   return {
     id: doc._id.toString(),
-    tenantId: doc.tenantId.toString(),
+    companyId: doc.companyId.toString(),
     name: doc.name,
     slug: doc.slug,
     parentId: doc.parentId ? doc.parentId.toString() : null,
@@ -18,7 +33,7 @@ export function serializeCategory(doc: CategoryDoc): Category {
 export function serializeProduct(doc: ProductDoc): Product {
   return {
     id: doc._id.toString(),
-    tenantId: doc.tenantId.toString(),
+    companyId: doc.companyId.toString(),
     sku: doc.sku,
     name: doc.name,
     description: doc.description,

@@ -3,7 +3,7 @@ import { AuditLogModel } from "../models";
 import { publish } from "../events/bus";
 
 type WriteAuditOptions = {
-  tenantId: string;
+  companyId: string;
   userId: string;
   action: AuditAction;
   entity: string;
@@ -15,7 +15,7 @@ type WriteAuditOptions = {
 
 export async function writeAudit(options: WriteAuditOptions): Promise<void> {
   await AuditLogModel.create({
-    tenantId: options.tenantId,
+    companyId: options.companyId,
     userId: options.userId,
     action: options.action,
     entity: options.entity,

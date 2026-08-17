@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
 import type { WorkOrder } from "@erp/shared";
 
-export type WorkOrderDoc = Omit<WorkOrder, "id" | "tenantId" | "bomId" | "productId" | "workCenterId" | "startedAt" | "completedAt"> & {
+export type WorkOrderDoc = Omit<WorkOrder, "id" | "companyId" | "bomId" | "productId" | "workCenterId" | "startedAt" | "completedAt"> & {
   _id: Types.ObjectId;
-  tenantId: Types.ObjectId;
+  companyId: Types.ObjectId;
   bomId: Types.ObjectId;
   productId: Types.ObjectId;
   workCenterId: Types.ObjectId;
@@ -18,7 +18,7 @@ const { Schema } = mongoose;
 
 const workOrderSchema = new Schema<WorkOrderDoc>(
   {
-    tenantId: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
+    companyId: { type: Schema.Types.ObjectId, ref: "Company", required: true },
     woNumber: { type: String, required: true },
     bomId: { type: Schema.Types.ObjectId, ref: "Bom", required: true },
     productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
@@ -52,8 +52,8 @@ const workOrderSchema = new Schema<WorkOrderDoc>(
   { timestamps: true },
 );
 
-workOrderSchema.index({ tenantId: 1, woNumber: 1 }, { unique: true });
-workOrderSchema.index({ tenantId: 1, status: 1 });
+workOrderSchema.index({ companyId: 1, woNumber: 1 }, { unique: true });
+workOrderSchema.index({ companyId: 1, status: 1 });
 
 export const WorkOrderModel: Model<WorkOrderDoc> =
   (mongoose.models.WorkOrder as Model<WorkOrderDoc>) || mongoose.model<WorkOrderDoc>("WorkOrder", workOrderSchema);

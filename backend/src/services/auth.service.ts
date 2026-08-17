@@ -4,11 +4,11 @@ import mongoose from "mongoose";
 import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import type { AuthTokens, CurrentUser, PlanTier, User } from "@erp/shared";
+import type { AuthTokens, CurrentUser, User } from "@erp/shared";
 import { env } from "../config/env";
-import { ALL_PERMISSIONS, PLAN_LIMITS, ROLE_PRESETS } from "../constants/permissions";
+import { ROLE_PRESETS } from "../constants/permissions";
 import { publish } from "../events/bus";
-import { RoleModel, SessionModel, TenantModel, TwoFactorModel, UserModel, type UserDoc } from "../models";
+import { RoleModel, SessionModel, TwoFactorModel, UserModel, type UserDoc } from "../models";
 import { AppError } from "../utils/errors";
 import { decryptSecret, encryptSecret, sha256 } from "../utils/crypto";
 import { generateBase32Secret, generateRecoveryCodes, verifyTotp } from "../utils/totp";
@@ -18,19 +18,11 @@ const SALT_ROUNDS = 12;
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
 
-export function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-}
-
 function issueAccessToken(user: UserDoc, role: { name: string; permissions: string[] }): string {
   return jwt.sign(
     {
       sub: user._id.toString(),
-      tenantId: user.tenantId.toString(),
+      companyId: user.companyId.toString(),
       permissions: role.permissions,
       role: role.name,
     },
@@ -43,93 +35,15 @@ function generateRefreshToken(): string {
   return randomBytes(48).toString("hex");
 }
 
-export type SignupInput = {
-  companyName: string;
-  name: string;
-  email: string;
-  password: string;
-  plan: PlanTier;
-};
+export type SessionOptions = { session?: mongoose.ClientSession };
 
-export async function signup(input: SignupInput): Promise<AuthTokens> {
-  const existingEmail = await UserModel.findOne({ email: input.email.toLowerCase() });
-  if (existingEmail) {
-    throw new AppError(409, "email already registered");
-  }
-
-  const session = await mongoose.startSession();
-  try {
-    const [tenant] = await TenantModel.create(
-      [
-        {
-          name: input.companyName,
-          slug: await uniqueSlug(input.companyName),
-          plan: input.plan,
-          isActive: true,
-          settings: { currency: "USD", taxRate: 0, timezone: "UTC" },
-          limits: PLAN_LIMITS[input.plan],
-        },
-      ],
-      { session },
-    );
-
-    const [adminRole] = await RoleModel.create(
-      [
-        {
-          tenantId: tenant._id,
-          name: "admin",
-          permissions: [...ALL_PERMISSIONS],
-          isSystem: true,
-        },
-      ],
-      { session },
-    );
-
-    const [user] = await UserModel.create(
-      [
-        {
-          tenantId: tenant._id,
-          email: input.email.toLowerCase(),
-          passwordHash: await bcrypt.hash(input.password, SALT_ROUNDS),
-          name: input.name,
-          roleId: adminRole._id,
-          isActive: true,
-        },
-      ],
-      { session },
-    );
-
-    await seedPresetRoles(tenant._id.toString(), { session });
-
-    return await createSessionPair(user, adminRole, input.email, "signup");
-  } catch (err) {
-    if (err instanceof AppError) throw err;
-    throw err;
-  } finally {
-    await session.endSession();
-  }
-}
-
-async function uniqueSlug(companyName: string): Promise<string> {
-  const base = slugify(companyName) || "company";
-  let candidate = base;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const exists = await TenantModel.exists({ slug: candidate });
-    if (!exists) return candidate;
-    candidate = `${base}-${randomBytes(2).toString("hex")}`;
-  }
-  throw new AppError(409, "could not generate a unique company slug");
-}
-
-type SessionOptions = { session?: mongoose.ClientSession };
-
-async function seedPresetRoles(tenantId: string, options: SessionOptions = {}): Promise<void> {
+export async function seedPresetRoles(companyId: string, options: SessionOptions = {}): Promise<void> {
   const presetNames = Object.keys(ROLE_PRESETS).filter((name) => name !== "admin");
-  const existing = await RoleModel.countDocuments({ tenantId, name: { $in: presetNames } }, options);
+  const existing = await RoleModel.countDocuments({ companyId, name: { $in: presetNames } }, options);
   if (existing > 0) return;
   const docs = Object.entries(ROLE_PRESETS)
     .filter(([name]) => name !== "admin")
-    .map(([name, permissions]) => ({ tenantId, name, permissions, isSystem: true }));
+    .map(([name, permissions]) => ({ companyId, name, permissions, isSystem: true }));
   await RoleModel.insertMany(docs, options);
 }
 
@@ -141,7 +55,7 @@ async function createSessionPair(
 ): Promise<AuthTokens> {
   const refreshToken = generateRefreshToken();
   await SessionModel.create({
-    tenantId: user.tenantId,
+    companyId: user.companyId,
     userId: user._id,
     tokenHash: sha256(refreshToken),
     device: "",
@@ -208,7 +122,7 @@ export async function login(input: LoginInput): Promise<AuthTokens> {
   }
 
   await writeAudit({
-    tenantId: user.tenantId.toString(),
+    companyId: user.companyId.toString(),
     userId: user._id.toString(),
     action: "login",
     entity: "User",
@@ -260,7 +174,7 @@ export async function setupTwoFactor(userId: string): Promise<{ secret: string; 
     );
   } else {
     await TwoFactorModel.create({
-      tenantId: (await UserModel.findById(userId))!.tenantId,
+      companyId: (await UserModel.findById(userId))!.companyId,
       userId,
       secretEncrypted: encryptSecret(secret),
       recoveryCodes: recoveryCodes.map(sha256),
@@ -345,7 +259,7 @@ export async function currentUser(userId: string): Promise<CurrentUser> {
 export function serializeUser(user: UserDoc): User {
   return {
     id: user._id.toString(),
-    tenantId: user.tenantId.toString(),
+    companyId: user.companyId.toString(),
     email: user.email,
     name: user.name,
     roleId: user.roleId.toString(),

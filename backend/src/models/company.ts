@@ -1,16 +1,16 @@
 import mongoose from "mongoose";
 import type { Model, Types } from "mongoose";
-import type { Tenant } from "@erp/shared";
+import type { Company } from "@erp/shared";
 
 const { model, models, Schema } = mongoose;
 
-export type TenantDoc = Omit<Tenant, "id"> & {
+export type CompanyDoc = Omit<Company, "id"> & {
   _id: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 };
 
-const tenantSchema = new Schema<TenantDoc>(
+const companySchema = new Schema<CompanyDoc>(
   {
     name: { type: String, required: true, trim: true },
     slug: { type: String, required: true, unique: true },
@@ -30,5 +30,5 @@ const tenantSchema = new Schema<TenantDoc>(
   { timestamps: true },
 );
 
-export const TenantModel: Model<TenantDoc> =
-  (models.Tenant as Model<TenantDoc>) || model<TenantDoc>("Tenant", tenantSchema);
+export const CompanyModel: Model<CompanyDoc> =
+  (models.Company as Model<CompanyDoc>) || model<CompanyDoc>("Company", companySchema);

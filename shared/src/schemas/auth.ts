@@ -6,14 +6,6 @@ export const loginSchema = Joi.object({
   totpCode: Joi.string().length(6).optional(),
 });
 
-export const signupSchema = Joi.object({
-  companyName: Joi.string().min(2).max(80).required(),
-  name: Joi.string().min(2).max(80).required(),
-  email: Joi.string().email().required(),
-  password: Joi.string().min(8).pattern(/[A-Z]/, "uppercase").required(),
-  plan: Joi.string().valid("starter", "pro", "enterprise").default("starter"),
-});
-
 export const refreshSchema = Joi.object({
   refreshToken: Joi.string().min(20).required(),
 });
@@ -32,7 +24,7 @@ export const userCreateSchema = Joi.object({
 
 export const roleSchema = Joi.object({
   name: Joi.string().min(2).max(40).required(),
-  permissions: Joi.array().items(Joi.string().pattern(/^[a-z]+:[a-z]+$/)).min(1).required(),
+  permissions: Joi.array().items(Joi.string().pattern(/^[a-z]+(:[a-z]+)+$/)).min(1).required(),
 });
 
 export const totpSetupSchema = Joi.object({
