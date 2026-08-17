@@ -6,7 +6,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { createAppTheme } from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth";
 import { CompanySettingsProvider } from "@/lib/company-settings";
-import { LocaleProvider, useAppLocale } from "@/lib/locale";
+import { LocaleProvider, useAppLocale, type Locale } from "@/lib/locale";
 import { RtlCacheProvider } from "@/lib/emotion-cache";
 
 function AppProviders({ children }: { children: React.ReactNode }) {
@@ -26,9 +26,9 @@ function AppProviders({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children, initialLocale }: { children: React.ReactNode; initialLocale?: Locale }) {
   return (
-    <LocaleProvider>
+    <LocaleProvider initialLocale={initialLocale}>
       <AppProviders>{children}</AppProviders>
     </LocaleProvider>
   );
