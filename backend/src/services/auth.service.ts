@@ -10,7 +10,7 @@ import { RoleModel, SessionModel, TwoFactorModel, UserModel, type UserDoc } from
 import { AppError } from "../utils/errors";
 import { decryptSecret, encryptSecret, sha256 } from "../utils/crypto";
 import { generateBase32Secret, generateRecoveryCodes, verifyTotp } from "../utils/totp";
-import { deleteImage } from "../utils/r2";
+import { deleteImage } from "../utils/cloudinary";
 import { writeAudit } from "./audit.service";
 
 const SALT_ROUNDS = 12;

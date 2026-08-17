@@ -8,7 +8,7 @@ import { asyncHandler } from "../utils/async-handler";
 import { AppError } from "../utils/errors";
 import { CompanyModel } from "../models";
 import { serializeCompany } from "../utils/serializers";
-import { deleteImage } from "../utils/r2";
+import { deleteImage } from "../utils/cloudinary";
 import { writeAudit } from "../services/audit.service";
 
 export const companyRouter = Router();

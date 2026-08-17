@@ -11,11 +11,9 @@ const envSchema = Joi.object({
   REFRESH_EXPIRES_IN_DAYS: Joi.number().integer().positive().default(30),
   CORS_ORIGIN: Joi.string().default("*"),
   UPLOAD_DIR: Joi.string().default("uploads"),
-  R2_ACCOUNT_ID: Joi.string().allow("").default(""),
-  R2_ACCESS_KEY_ID: Joi.string().allow("").default(""),
-  R2_SECRET_ACCESS_KEY: Joi.string().allow("").default(""),
-  R2_BUCKET: Joi.string().allow("").default(""),
-  R2_PUBLIC_BASE_URL: Joi.string().allow("").default(""),
+  CLOUDINARY_CLOUD_NAME: Joi.string().allow("").default(""),
+  CLOUDINARY_API_KEY: Joi.string().allow("").default(""),
+  CLOUDINARY_API_SECRET: Joi.string().allow("").default(""),
 });
 
 const { value, error } = envSchema.validate(process.env, { allowUnknown: true, stripUnknown: true });
@@ -33,11 +31,9 @@ type Env = {
   REFRESH_EXPIRES_IN_DAYS: number;
   CORS_ORIGIN: string;
   UPLOAD_DIR: string;
-  R2_ACCOUNT_ID: string;
-  R2_ACCESS_KEY_ID: string;
-  R2_SECRET_ACCESS_KEY: string;
-  R2_BUCKET: string;
-  R2_PUBLIC_BASE_URL: string;
+  CLOUDINARY_CLOUD_NAME: string;
+  CLOUDINARY_API_KEY: string;
+  CLOUDINARY_API_SECRET: string;
 };
 
 export const env = value as Env;

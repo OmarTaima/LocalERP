@@ -12,7 +12,7 @@ import {
   type CategoryDoc,
 } from "../models";
 import { serializeCategory, serializeProduct } from "../utils/serializers";
-import { deleteImage } from "../utils/r2";
+import { deleteImage } from "../utils/cloudinary";
 
 export function slugifyName(value: string): string {
   return value

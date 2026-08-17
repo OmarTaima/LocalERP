@@ -24,7 +24,7 @@ import { serializeCompany } from "../utils/serializers";
 import { asyncHandler } from "../utils/async-handler";
 import { AppError } from "../utils/errors";
 import { parsePagination } from "../utils/pagination";
-import { deleteImage } from "../utils/r2";
+import { deleteImage } from "../utils/cloudinary";
 
 export const adminRouter = Router();
 

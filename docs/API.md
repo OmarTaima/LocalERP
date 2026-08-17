@@ -19,7 +19,7 @@ Auth: `Authorization: Bearer <jwt>` except public routes. Permission codes shown
 | POST | `/auth/logout` | auth | revokes current session |
 | GET | `/auth/me` | auth | current user + permissions |
 | PATCH | `/auth/password` | `profile:write` | change password |
-| POST | `/auth/avatar` | `profile:write` | set avatar photo → `{ avatarUrl }` (body `{ avatarUrl: https }`, uploaded via `/upload/direct`) |
+| POST | `/auth/avatar` | `profile:write` | set avatar photo → `{ avatarUrl }` (body `{ avatarUrl: https }`, the https URL from a direct Cloudinary unsigned upload) |
 | GET | `/users` | `users:read` | list users (search, paginate) |
 | POST | `/users` | `users:create` | create user (`avatarUrl?` https URL sets avatar) |
 | PATCH | `/users/:id` | `users:write` | update user (name, role, isActive, `avatarUrl?`) |
@@ -32,7 +32,7 @@ Auth: `Authorization: Bearer <jwt>` except public routes. Permission codes shown
 | PATCH | `/company/settings` | `companies:write` | update `name` and/or settings (`currency`, `taxRate`, `timezone`) — at least one field required |
 | POST | `/company/logo` | `companies:write` | set company logo → `{ logoUrl }` (body `{ logoUrl: https }`) |
 
-> Image uploads (avatar, logo, product photo): the browser uploads the file directly to Cloudflare R2 (S3-compatible, presigned URLs) and stores the resulting URL. Flow: `POST /upload/direct` with `{ name, type, folder? }` (any authenticated user incl. superadmin) → `{ uploadURL, publicUrl }`; the client PUTs the raw file bytes to `uploadURL` with the `Content-Type` header set (15 min expiry); then save `publicUrl` via the endpoint above (avatar/logo) or as `image` on product create/update. Requires `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL` on the backend; returns 503 `{ error }` when unconfigured.
+> Image uploads (avatar, logo, product photo): the browser uploads files directly to `https://api.cloudinary.com/v1_1/<cloud_name>/auto/upload` using the unsigned upload preset `ml_default` (no backend involvement, no signature) and stores the returned `secure_url` via the endpoints above (avatar/logo) or as `image` on product create/update. `POST /upload/direct` no longer exists. The backend `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` env vars only power server-side deletion of replaced images; when unconfigured, deletion is skipped.
 
 ### Platform admin (super-admin, separate JWT — no `companyId` claim)
 

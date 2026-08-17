@@ -8,13 +8,11 @@ async function run(): Promise<void> {
   await mongod.waitUntilRunning();
   process.env.NODE_ENV = "test";
   process.env.MONGO_URI = mongod.getUri("erp");
-  // Smoke must never touch real Cloudflare R2: pin the config vars to empty
-  // so POST /upload/direct returns 503 instead of presigning against the bucket.
-  process.env.R2_ACCOUNT_ID = "";
-  process.env.R2_ACCESS_KEY_ID = "";
-  process.env.R2_SECRET_ACCESS_KEY = "";
-  process.env.R2_BUCKET = "";
-  process.env.R2_PUBLIC_BASE_URL = "";
+  // Smoke must never touch real Cloudinary: pin the config vars to empty
+  // so deleteImage no-ops instead of destroying real assets.
+  process.env.CLOUDINARY_CLOUD_NAME = "";
+  process.env.CLOUDINARY_API_KEY = "";
+  process.env.CLOUDINARY_API_SECRET = "";
 
   const { app, connectDb } = await import("../index");
   await connectDb();
@@ -206,26 +204,6 @@ async function run(): Promise<void> {
     body: JSON.stringify({ avatarUrl: demoImage("avatar-4") }),
   });
   expect(adminAvatarPatch.status === 200 && (adminAvatarPatch.body.avatarUrl as string).startsWith("https://"), "PATCH /admin/users/:id updates avatarUrl");
-
-  const directUploadAnon = await request("/upload/direct", {
-    method: "POST",
-    body: JSON.stringify({ name: "demo.png", type: "image/png" }),
-  });
-  expect(directUploadAnon.status === 401, "POST /upload/direct rejects missing token");
-
-  const directUploadCompany = await request("/upload/direct", {
-    method: "POST",
-    headers: authHeaders,
-    body: JSON.stringify({ name: "demo.png", type: "image/png" }),
-  });
-  expect(directUploadCompany.status === 503, "POST /upload/direct accepts company user token and 503s without R2 config");
-
-  const directUploadAdmin = await request("/upload/direct", {
-    method: "POST",
-    headers: adminHeaders,
-    body: JSON.stringify({ name: "demo.png", type: "image/png", folder: "logos" }),
-  });
-  expect(directUploadAdmin.status === 503, "POST /upload/direct accepts superadmin token and 503s without R2 config");
 
   const adminUserDelete = await request(`/admin/users/${adminUserId}`, { method: "DELETE", headers: adminHeaders });
   expect(adminUserDelete.status === 200, "DELETE /admin/users/:id soft-deactivates user");
