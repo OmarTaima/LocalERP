@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
@@ -15,6 +16,8 @@ import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import { AppShell, itemVariants } from "@/components/app-shell";
 import { StatusChip, EmptyState, toastError } from "@/components/ui";
 import { api } from "@/lib/api";
+import { useAppLocale } from "@/lib/locale";
+import { currency } from "@/lib/use-list";
 
 type DashboardStats = {
   revenue: number;
@@ -37,13 +40,11 @@ type DashboardAlerts = {
 
 type OrderRow = { id: string; orderNumber: string; customerName: string; totals: { total: number }; status: string; createdAt: string };
 
-const fmt = (value: number): string =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
-
-const shortDate = (iso: string): string =>
-  new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
 export default function HomePage() {
+  const t = useTranslations("dashboard");
+  const { locale } = useAppLocale();
+  const shortDate = (iso: string): string =>
+    new Date(iso).toLocaleDateString(locale === "ar" ? "ar-EG-u-nu-latn" : "en-US", { month: "short", day: "numeric" });
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
   const [alerts, setAlerts] = useState<DashboardAlerts | null>(null);
@@ -64,16 +65,16 @@ export default function HomePage() {
         setAlerts(alertsData);
         setOrders(ordersData.items);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "failed to load dashboard");
+        setError(err instanceof Error ? err.message : t("loadFailed"));
       }
     })();
   }, []);
 
   const kpis = [
-    { label: "Revenue", value: stats ? fmt(stats.revenue) : null, delta: stats && stats.aov > 0 ? `AOV ${fmt(stats.aov)}` : null, color: "#4f46e5" },
-    { label: "Orders", value: stats ? String(stats.orders) : null, delta: null, color: "#0ea5e9" },
-    { label: "Inventory Value", value: stats ? fmt(stats.inventoryValue) : null, delta: null, color: "#059669" },
-    { label: "Stock Alerts", value: stats ? String(stats.lowStockCount + stats.expiringBatches) : null, delta: null, color: "#d97706" },
+    { label: t("kpiRevenue"), value: stats ? currency(stats.revenue, { maxFractionDigits: 0 }) : null, delta: stats && stats.aov > 0 ? t("kpiAov", { aov: currency(stats.aov, { maxFractionDigits: 0 }) }) : null, color: "#4f46e5" },
+    { label: t("kpiOrders"), value: stats ? String(stats.orders) : null, delta: null, color: "#0ea5e9" },
+    { label: t("kpiInventoryValue"), value: stats ? currency(stats.inventoryValue, { maxFractionDigits: 0 }) : null, delta: null, color: "#059669" },
+    { label: t("kpiStockAlerts"), value: stats ? String(stats.lowStockCount + stats.expiringBatches) : null, delta: null, color: "#d97706" },
   ];
 
   const chartMax = stats && stats.chartSeries.length > 0 ? Math.max(...stats.chartSeries.map((point) => point.value)) : 1;
@@ -85,10 +86,10 @@ export default function HomePage() {
       <motion.div variants={itemVariants}>
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "start", sm: "center" }} sx={{ mb: 3 }}>
           <Box>
-            <Typography variant="h4" sx={{ color: "#0f172a" }}>Executive Overview</Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.5, fontSize: 14 }}>A quick look at how your business is doing today.</Typography>
+            <Typography variant="h4" sx={{ color: "#0f172a" }}>{t("executiveOverview")}</Typography>
+            <Typography sx={{ color: "#64748b", mt: 0.5, fontSize: 14 }}>{t("subtitle")}</Typography>
             <Typography sx={{ color: "#94a3b8", mt: 0.25, fontSize: 12.5 }}>
-              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })} · Live data
+              {new Date().toLocaleDateString(locale === "ar" ? "ar-EG-u-nu-latn" : "en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })} · {t("liveData")}
             </Typography>
           </Box>
           <Stack direction="row" spacing={1.5} sx={{ mt: { xs: 2, sm: 0 } }}>
@@ -96,13 +97,15 @@ export default function HomePage() {
               variant="outlined"
               onClick={() =>
                 void toastError(
-                  error ?? (stats
-                    ? `Revenue ${fmt(stats.revenue)} · ${stats.orders} orders · ${fmt(stats.aov)} AOV`
-                    : "Dashboard data is loading") + " — reports open in Accounting",
+                  t("runReportToast", {
+                    message: error ?? (stats
+                      ? t("reportSummary", { revenue: currency(stats.revenue, { maxFractionDigits: 0 }), orders: stats.orders, aov: currency(stats.aov, { maxFractionDigits: 0 }) })
+                      : t("dataLoading")),
+                  }),
                 )
               }
             >
-              Run report
+              {t("runReport")}
             </Button>
           </Stack>
         </Stack>
@@ -111,7 +114,7 @@ export default function HomePage() {
       {error && (
         <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: "1px solid #fecaca", bgcolor: "#fef2f2", mb: 3 }}>
           <Typography sx={{ color: "#dc2626", fontSize: 13.5, fontWeight: 600 }}>
-            {error} — check that the backend is running on port 4000.
+            {t("backendError", { error })}
           </Typography>
         </Paper>
       )}
@@ -144,7 +147,7 @@ export default function HomePage() {
               {kpi.delta === null && kpi.value !== null && (
                 <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.75 }}>
                   <TrendingDownIcon sx={{ fontSize: 16, color: "#94a3b8" }} />
-                  <Typography sx={{ fontSize: 12.5, color: "#94a3b8" }}>live from ERP</Typography>
+                  <Typography sx={{ fontSize: 12.5, color: "#94a3b8" }}>{t("liveFromErp")}</Typography>
                 </Stack>
               )}
             </Paper>
@@ -157,22 +160,22 @@ export default function HomePage() {
           <Paper elevation={0} sx={{ p: 3, border: "1px solid #e2e8f0", borderRadius: 3, height: "100%" }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
               <Box>
-                <Typography variant="h6" sx={{ color: "#0f172a" }}>Revenue trend</Typography>
-                <Typography sx={{ color: "#94a3b8", fontSize: 13 }}>Paid orders · daily totals</Typography>
+                <Typography variant="h6" sx={{ color: "#0f172a" }}>{t("revenueTrend")}</Typography>
+                <Typography sx={{ color: "#94a3b8", fontSize: 13 }}>{t("revenueTrendSubtitle")}</Typography>
               </Box>
-              <Chip label="Live" size="small" sx={{ bgcolor: "#eef2ff", color: "#4f46e5", fontWeight: 700 }} />
+              <Chip label={t("live")} size="small" sx={{ bgcolor: "#eef2ff", color: "#4f46e5", fontWeight: 700 }} />
             </Stack>
             {!stats || stats.chartSeries.length === 0 ? (
               <EmptyState
                 icon={<TrendingUpIcon />}
-                title="No revenue yet"
-                subtitle="Revenue appears once orders are paid — try the Sales module"
+                title={t("noRevenueTitle")}
+                subtitle={t("noRevenueSubtitle")}
               />
             ) : (
               <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1.5, height: 190 }}>
                 {stats.chartSeries.slice(-12).map((point, index) => (
                   <Box key={point.date} sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 1, height: "100%" }}>
-                    <Typography sx={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>{fmt(point.value)}</Typography>
+                    <Typography sx={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>{currency(point.value, { maxFractionDigits: 0 })}</Typography>
                     <Box sx={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end" }}>
                       <motion.div
                         initial={{ scaleY: 0 }}
@@ -203,7 +206,7 @@ export default function HomePage() {
         <motion.div variants={itemVariants}>
           <Paper elevation={0} sx={{ p: 3, border: "1px solid #e2e8f0", borderRadius: 3, height: "100%" }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-              <Typography variant="h6" sx={{ color: "#0f172a" }}>Alerts</Typography>
+              <Typography variant="h6" sx={{ color: "#0f172a" }}>{t("alerts")}</Typography>
               <Chip
                 label={alerts ? String(alerts.lowStock.length + alerts.overdueInvoices.length + alerts.expiringBatches.length) : "…"}
                 size="small"
@@ -211,7 +214,7 @@ export default function HomePage() {
               />
             </Stack>
             {!alerts || (alerts.lowStock.length === 0 && alerts.overdueInvoices.length === 0 && alerts.expiringBatches.length === 0) ? (
-              <EmptyState icon={<WarningAmberRoundedIcon />} title="All clear" subtitle="No low stock, expiring batches, or overdue invoices" />
+              <EmptyState icon={<WarningAmberRoundedIcon />} title={t("allClear")} subtitle={t("allClearSubtitle")} />
             ) : (
               <Box sx={{ maxHeight: 260, overflowY: "auto" }}>
                 {alerts.lowStock.slice(0, 3).map((item) => (
@@ -220,7 +223,7 @@ export default function HomePage() {
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }} noWrap>{item.name}</Typography>
                       <Typography sx={{ fontSize: 12, color: "#94a3b8" }} noWrap>
-                        {item.sku} · {item.quantity} left / threshold {item.threshold}
+                        {t("lowStockLine", { sku: item.sku, quantity: item.quantity, threshold: item.threshold })}
                       </Typography>
                     </Box>
                   </Stack>
@@ -231,7 +234,7 @@ export default function HomePage() {
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }} noWrap>{invoice.orderNumber}</Typography>
                       <Typography sx={{ fontSize: 12, color: "#94a3b8" }} noWrap>
-                        {invoice.customerName} · {fmt(invoice.total - invoice.paid)} outstanding
+                        {t("overdueLine", { customerName: invoice.customerName, amount: currency(invoice.total - invoice.paid, { maxFractionDigits: 0 }) })}
                       </Typography>
                     </Box>
                   </Stack>
@@ -245,16 +248,16 @@ export default function HomePage() {
       <motion.div variants={itemVariants}>
         <Paper elevation={0} sx={{ p: 3, border: "1px solid #e2e8f0", borderRadius: 3 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-            <Typography variant="h6" sx={{ color: "#0f172a" }}>Recent orders</Typography>
-            <Button variant="text" size="small" onClick={() => void toastError("Full list opens in Sales & Orders")}>View all</Button>
+            <Typography variant="h6" sx={{ color: "#0f172a" }}>{t("recentOrders")}</Typography>
+            <Button variant="text" size="small" onClick={() => void toastError(t("fullListInSales"))}>{t("viewAll")}</Button>
           </Stack>
           {orders.length === 0 ? (
-            <EmptyState icon={<TrendingUpIcon />} title="No orders yet" subtitle="Orders created in Sales & Orders appear here" />
+            <EmptyState icon={<TrendingUpIcon />} title={t("noOrdersTitle")} subtitle={t("noOrdersSubtitle")} />
           ) : (
             <Box sx={{ overflowX: "auto" }}>
               <Box sx={{ minWidth: 560 }}>
                 <Stack direction="row" sx={{ px: 1.5, py: 1, borderBottom: "1px solid #e2e8f0" }}>
-                  {["Order", "Customer", "Total", "Status"].map((head) => (
+                  {[t("colOrder"), t("colCustomer"), t("colTotal"), t("colStatus")].map((head) => (
                     <Typography key={head} sx={{ flex: 1, fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "#64748b" }}>
                       {head}
                     </Typography>
@@ -264,7 +267,7 @@ export default function HomePage() {
                   <Stack key={order.id} direction="row" alignItems="center" sx={{ px: 1.5, py: 1.5, borderBottom: "1px solid #f1f5f9", "&:hover": { bgcolor: "#f8fafc" } }}>
                     <Typography sx={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: "#4f46e5" }}>{order.orderNumber}</Typography>
                     <Typography sx={{ flex: 1, fontSize: 13.5, color: "#334155" }}>{order.customerName}</Typography>
-                    <Typography sx={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>{fmt(order.totals.total)}</Typography>
+                    <Typography sx={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>{currency(order.totals.total, { maxFractionDigits: 0 })}</Typography>
                     <Box sx={{ flex: 1 }}><StatusChip status={order.status} /></Box>
                   </Stack>
                 ))}
@@ -278,7 +281,7 @@ export default function HomePage() {
         <motion.div variants={itemVariants}>
           <Paper elevation={0} sx={{ p: 3, border: "1px solid #e2e8f0", borderRadius: 3, mt: 3 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-              <Typography variant="h6" sx={{ color: "#0f172a" }}>Pending approvals</Typography>
+              <Typography variant="h6" sx={{ color: "#0f172a" }}>{t("pendingApprovals")}</Typography>
               <Chip label={approvals.length} size="small" sx={{ bgcolor: "#eef2ff", color: "#4f46e5", fontWeight: 700 }} />
             </Stack>
             {approvals.slice(0, 4).map((approval) => (
@@ -286,7 +289,7 @@ export default function HomePage() {
                 <Box sx={{ width: 34, height: 34, borderRadius: 2, bgcolor: "#e0f2fe", display: "flex", alignItems: "center", justifyContent: "center", color: "#0284c7", fontSize: 15, fontWeight: 700 }}>!</Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }} noWrap>{approval.entityType} · {approval.entityId.slice(-6)}</Typography>
-                  <Typography sx={{ fontSize: 12, color: "#94a3b8" }} noWrap>requested {shortDate(approval.createdAt)}</Typography>
+                  <Typography sx={{ fontSize: 12, color: "#94a3b8" }} noWrap>{t("requestedOn", { date: shortDate(approval.createdAt) })}</Typography>
                 </Box>
               </Stack>
             ))}

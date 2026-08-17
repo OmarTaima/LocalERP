@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Swal from "sweetalert2";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
@@ -16,10 +17,18 @@ export const SWAL_THEME = {
   color: "#0f172a",
 };
 
+let uiLocale: "en" | "ar" = "en";
+
+export function setUiLocale(locale: "en" | "ar"): void {
+  uiLocale = locale;
+}
+
+const toastPosition = (): "bottom-start" | "bottom-end" => (uiLocale === "ar" ? "bottom-start" : "bottom-end");
+
 export function toastSuccess(title: string): void {
   void Swal.mixin({
     toast: true,
-    position: "bottom-end",
+    position: toastPosition(),
     showConfirmButton: false,
     timer: 2600,
     timerProgressBar: true,
@@ -31,7 +40,7 @@ export function toastSuccess(title: string): void {
 export function toastError(title: string): void {
   void Swal.mixin({
     toast: true,
-    position: "bottom-end",
+    position: toastPosition(),
     showConfirmButton: false,
     timer: 3200,
     timerProgressBar: true,
@@ -46,8 +55,8 @@ export async function confirmAction(options: { title: string; text: string; conf
     text: options.text,
     icon: options.icon ?? "warning",
     showCancelButton: true,
-    confirmButtonText: options.confirmText ?? "Confirm",
-    cancelButtonText: options.cancelText ?? "Cancel",
+    confirmButtonText: options.confirmText ?? (uiLocale === "ar" ? "تأكيد" : "Confirm"),
+    cancelButtonText: options.cancelText ?? (uiLocale === "ar" ? "إلغاء" : "Cancel"),
     ...SWAL_THEME,
   });
   return result.isConfirmed;
@@ -75,10 +84,12 @@ const STATUS_TONES: Record<string, { bg: string; color: string }> = {
 };
 
 export function StatusChip({ status }: { status: string }) {
+  const t = useTranslations("common");
   const tone = STATUS_TONES[status] ?? { bg: "#f1f5f9", color: "#475569" };
+  const label = t.has(`status.${status}`) ? t(`status.${status}`) : status.replace(/-/g, " ");
   return (
     <Chip
-      label={status.replace(/-/g, " ")}
+      label={label}
       size="small"
       sx={{ bgcolor: tone.bg, color: tone.color, fontWeight: 700, fontSize: 11.5, textTransform: "capitalize" }}
     />

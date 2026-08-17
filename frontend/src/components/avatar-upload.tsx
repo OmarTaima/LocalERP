@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
 import Avatar from "@mui/material/Avatar";
@@ -32,6 +33,7 @@ export function AvatarUpload({
   /** Upload folder used when requesting a direct upload URL. */
   folder?: string;
 }) {
+  const t = useTranslations("common");
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -40,11 +42,11 @@ export function AvatarUpload({
     event.target.value = "";
     if (!file || uploading) return;
     if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
-      toastError("Please select an image file (png, jpeg, webp)");
+      toastError(t("selectImageFile"));
       return;
     }
     if (file.size > MAX_IMAGE_SIZE) {
-      toastError("Image must be smaller than 1.5 MB");
+      toastError(t("imageTooLarge"));
       return;
     }
     setUploading(true);
@@ -69,7 +71,7 @@ export function AvatarUpload({
       <Box
         role="button"
         tabIndex={disabled || uploading ? -1 : 0}
-        aria-label="Upload image"
+        aria-label={t("uploadImage")}
         onClick={openPicker}
         onKeyDown={(event) => {
           if (!disabled && !uploading && (event.key === "Enter" || event.key === " ")) {

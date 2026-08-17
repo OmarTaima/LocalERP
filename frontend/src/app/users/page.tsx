@@ -3,18 +3,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Chip from "@mui/material/Chip";
 import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
+import BlockIcon from "@mui/icons-material/Block";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
+import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import { AppShell, itemVariants } from "@/components/app-shell";
 import { PageHeader, StatusChip, toastSuccess, toastError, confirmAction } from "@/components/ui";
 import { DataTable } from "@/components/data-table";
@@ -37,6 +42,7 @@ type UserRow = {
 type RoleRow = { id: string; name: string; permissions: string[]; isSystem: boolean };
 
 export default function UsersPage() {
+  const t = useTranslations("users");
   const router = useRouter();
   const { user } = useAuth();
   const { rows: roles } = useList<RoleRow>("/roles", { pageSize: 100 });
@@ -52,7 +58,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (user && (user.kind !== "company" || !user.permissions.includes("users:read"))) {
-      toastError("You don't have permission to manage users");
+      toastError(t("noPermission"));
       router.replace("/");
     }
   }, [user, router]);
@@ -100,25 +106,25 @@ export default function UsersPage() {
   const handleToggleActive = async (row: UserRow) => {
     if (row.isActive) {
       const ok = await confirmAction({
-        title: `Deactivate ${row.name}?`,
-        text: "They will no longer be able to sign in until reactivated.",
-        confirmText: "Deactivate",
+        title: t("deactivateTitle", { name: row.name }),
+        text: t("deactivateText"),
+        confirmText: t("deactivate"),
         icon: "warning",
       });
       if (!ok) return;
     }
     try {
       await api(`/users/${row.id}`, { method: "PATCH", body: { isActive: !row.isActive } });
-      toastSuccess(row.isActive ? "User deactivated" : "User reactivated");
+      toastSuccess(row.isActive ? t("userDeactivated") : t("userReactivated"));
       fetchData(page);
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to update user");
+      toastError(err instanceof Error ? err.message : t("failedUpdateUser"));
     }
   };
 
   const handleSubmit = async (values: Record<string, string | number>) => {
     if (!editing && String(values.password).length < 8) {
-      toastError("Password must be at least 8 characters");
+      toastError(t("passwordMinLength"));
       return;
     }
     try {
@@ -132,7 +138,7 @@ export default function UsersPage() {
             ...(avatarDraftUrl ? { avatarUrl: avatarDraftUrl } : {}),
           },
         });
-        toastSuccess("User updated");
+        toastSuccess(t("userUpdated"));
       } else {
         await api("/users", {
           method: "POST",
@@ -144,27 +150,27 @@ export default function UsersPage() {
             ...(avatarDraftUrl ? { avatarUrl: avatarDraftUrl } : {}),
           },
         });
-        toastSuccess("User created");
+        toastSuccess(t("userCreated"));
       }
       setCreateOpen(false);
       setEditing(null);
       setAvatarDraftUrl(null);
       fetchData(page);
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to save user");
+      toastError(err instanceof Error ? err.message : t("failedSaveUser"));
     }
   };
 
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Users" subtitle="Invite people to the workspace and control their access." />
+        <PageHeader title={t("pageTitle")} subtitle={t("pageSubtitle")} />
       </motion.div>
       <motion.div variants={itemVariants}>
         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
           <TextField
             size="small"
-            placeholder="Search users..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             sx={{ width: 240 }}
@@ -173,7 +179,7 @@ export default function UsersPage() {
         <DataTable
           columns={[
             {
-              label: "User",
+              label: t("user"),
               render: (row) => (
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <Avatar src={assetUrl(row.avatarUrl)} sx={{ width: 34, height: 34, bgcolor: "#4f46e5", fontSize: 13, fontWeight: 700 }}>
@@ -187,12 +193,12 @@ export default function UsersPage() {
               ),
             },
             {
-              label: "Role",
+              label: t("role"),
               render: (row) => {
                 const roleName = roleNameById.get(row.roleId);
                 return (
                   <Chip
-                    label={roleName ?? "Unknown"}
+                    label={roleName ?? t("unknown")}
                     size="small"
                     sx={{
                       bgcolor: roleName ? "#ede9fe" : "#f1f5f9",
@@ -204,58 +210,67 @@ export default function UsersPage() {
                 );
               },
             },
-            { label: "Status", render: (row) => <StatusChip status={row.isActive ? "active" : "inactive"} /> },
-            { label: "Last login", render: (row) => dateShort(row.lastLoginAt) },
+            { label: t("status"), render: (row) => <StatusChip status={row.isActive ? "active" : "inactive"} /> },
+            { label: t("lastLogin"), render: (row) => dateShort(row.lastLoginAt) },
           ]}
           rows={users}
           total={total}
           page={page}
           onPageChange={setPage}
           loading={loading}
-          emptyTitle="No users"
-          emptySubtitle="Invite users to give them access to this workspace"
+          emptyTitle={t("emptyTitle")}
+          emptySubtitle={t("emptySubtitle")}
           emptyIcon={<PeopleOutlineIcon />}
           rowActions={(row) => (
-            <Stack direction="row" spacing={1} justifyContent="flex-end">
+            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
               {user.permissions.includes("users:write") && (
-                <Button size="small" variant="outlined" aria-label={`Edit ${row.name}`} onClick={() => openEdit(row)}>
-                  <EditIcon fontSize="small" />
-                </Button>
+                <Tooltip title={t("editAria", { name: row.name })}>
+                  <IconButton size="small" color="primary" aria-label={t("editAria", { name: row.name })} onClick={() => openEdit(row)}>
+                    <EditOutlinedIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </Tooltip>
               )}
               {user.permissions.includes("users:delete") && row.id !== user.id && (
-                <Button size="small" variant="outlined" color="error" onClick={() => void handleToggleActive(row)}>
-                  {row.isActive ? "Deactivate" : "Reactivate"}
-                </Button>
+                <Tooltip title={row.isActive ? t("deactivate") : t("reactivate")}>
+                  <IconButton
+                    size="small"
+                    color={row.isActive ? "error" : "success"}
+                    aria-label={row.isActive ? t("deactivate") : t("reactivate")}
+                    onClick={() => void handleToggleActive(row)}
+                  >
+                    {row.isActive ? <BlockIcon sx={{ fontSize: 20 }} /> : <PlayCircleOutlineIcon sx={{ fontSize: 20 }} />}
+                  </IconButton>
+                </Tooltip>
               )}
             </Stack>
           )}
           actions={
             user.permissions.includes("users:create") ? (
-              <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>New user</Button>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>{t("newUser")}</Button>
             ) : undefined
           }
         />
         <FormDialog
           key={editing ? `edit-${editing.id}` : "new"}
           open={createOpen}
-          title={editing ? editing.name : "New user"}
+          title={editing ? editing.name : t("newUser")}
           maxWidth="sm"
           fields={
             editing
               ? [
-                  { name: "name", label: "Name", required: true, defaultValue: editing.name },
-                  { name: "roleId", label: "Role", type: "select", required: true, options: roleOptions, defaultValue: editing.roleId },
+                  { name: "name", label: t("name"), required: true, defaultValue: editing.name },
+                  { name: "roleId", label: t("role"), type: "select", required: true, options: roleOptions, defaultValue: editing.roleId },
                 ]
               : [
-                  { name: "name", label: "Name", required: true },
-                  { name: "email", label: "Email", type: "email", required: true },
-                  { name: "password", label: "Password", type: "password", required: true, helper: "At least 8 characters" },
-                  { name: "roleId", label: "Role", type: "select", options: roleOptions, defaultValue: employeeRole?.id ?? roleOptions[0]?.value },
+                  { name: "name", label: t("name"), required: true },
+                  { name: "email", label: t("email"), type: "email", required: true },
+                  { name: "password", label: t("password"), type: "password", required: true, helper: t("passwordHelper") },
+                  { name: "roleId", label: t("role"), type: "select", options: roleOptions, defaultValue: employeeRole?.id ?? roleOptions[0]?.value },
                 ]
           }
           onSubmit={handleSubmit}
           onClose={() => { setCreateOpen(false); setEditing(null); setAvatarDraftUrl(null); }}
-          submitLabel={editing ? "Save" : "Create user"}
+          submitLabel={editing ? t("save") : t("createUser")}
         >
           <Stack spacing={2}>
             <AvatarUpload value={avatarDraftUrl ?? (assetUrl(editing?.avatarUrl) ?? null)} onChange={setAvatarDraftUrl} />
@@ -263,10 +278,10 @@ export default function UsersPage() {
               <Stack spacing={0.5}>
                 <FormControlLabel
                   control={<Switch checked={editingActive} onChange={(e) => setEditingActive(e.target.checked)} disabled={editing.id === user.id} />}
-                  label={<Typography sx={{ fontSize: 13.5, color: "#0f172a" }}>Active</Typography>}
+                  label={<Typography sx={{ fontSize: 13.5, color: "#0f172a" }}>{t("active")}</Typography>}
                 />
                 {editing.id === user.id && (
-                  <Typography sx={{ fontSize: 12, color: "#94a3b8" }}>You cannot deactivate your own account.</Typography>
+                  <Typography sx={{ fontSize: 12, color: "#94a3b8" }}>{t("cannotDeactivateSelf")}</Typography>
                 )}
               </Stack>
             )}

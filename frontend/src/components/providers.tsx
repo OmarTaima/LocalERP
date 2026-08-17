@@ -1,15 +1,35 @@
 "use client";
 
+import { useMemo } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { theme } from "@/lib/theme";
+import { createAppTheme } from "@/lib/theme";
 import { AuthProvider } from "@/lib/auth";
+import { CompanySettingsProvider } from "@/lib/company-settings";
+import { LocaleProvider, useAppLocale } from "@/lib/locale";
+import { RtlCacheProvider } from "@/lib/emotion-cache";
+
+function AppProviders({ children }: { children: React.ReactNode }) {
+  const { locale } = useAppLocale();
+  const direction = locale === "ar" ? "rtl" : "ltr";
+  const theme = useMemo(() => createAppTheme(direction), [direction]);
+
+  return (
+    <RtlCacheProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <CompanySettingsProvider>{children}</CompanySettingsProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </RtlCacheProvider>
+  );
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>{children}</AuthProvider>
-    </ThemeProvider>
+    <LocaleProvider>
+      <AppProviders>{children}</AppProviders>
+    </LocaleProvider>
   );
 }

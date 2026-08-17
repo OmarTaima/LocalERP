@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
+import { useTheme } from "@mui/material";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
@@ -46,6 +48,8 @@ export function DataTable<T extends { id: string }>({
   actions?: ReactNode;
   rowActions?: (row: T) => ReactNode;
 }) {
+  const t = useTranslations("common");
+  const theme = useTheme();
   const pageSize = 20;
 
   if (!loading && rows.length === 0) {
@@ -67,7 +71,7 @@ export function DataTable<T extends { id: string }>({
       {loading ? (
         <Stack alignItems="center" sx={{ py: 10 }}>
           <CircularProgress size={34} sx={{ color: "#4f46e5" }} />
-          <Typography sx={{ color: "#94a3b8", fontSize: 13, mt: 1.5 }}>Loading…</Typography>
+          <Typography sx={{ color: "#94a3b8", fontSize: 13, mt: 1.5 }}>{t("loading")}</Typography>
         </Stack>
       ) : (
         <TableContainer sx={{ maxHeight: 620 }}>
@@ -92,7 +96,23 @@ export function DataTable<T extends { id: string }>({
                     {column.label}
                   </TableCell>
                 ))}
-                {rowActions && <TableCell align="right" sx={{ bgcolor: "#f8fafc", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "#64748b" }}>Actions</TableCell>}
+                {rowActions && (
+                  <TableCell
+                    align={theme.direction === "rtl" ? "left" : "right"}
+                    sx={{
+                      width: "1%",
+                      whiteSpace: "nowrap",
+                      bgcolor: "#f8fafc",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      color: "#64748b",
+                    }}
+                  >
+                    {t("actions")}
+                  </TableCell>
+                )}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -103,7 +123,11 @@ export function DataTable<T extends { id: string }>({
                       {column.render(row)}
                     </TableCell>
                   ))}
-                  {rowActions && <TableCell align="right">{rowActions(row)}</TableCell>}
+                  {rowActions && (
+                    <TableCell align={theme.direction === "rtl" ? "left" : "right"} sx={{ width: "1%", whiteSpace: "nowrap" }}>
+                      {rowActions(row)}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

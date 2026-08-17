@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -14,8 +17,10 @@ import Chip from "@mui/material/Chip";
 import MenuItem from "@mui/material/MenuItem";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
+import BlockIcon from "@mui/icons-material/Block";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
+import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import { AppShell, itemVariants } from "@/components/app-shell";
 import { PageHeader, StatusChip, toastSuccess, toastError, confirmAction } from "@/components/ui";
 import { DataTable } from "@/components/data-table";
@@ -46,6 +51,7 @@ const PAGE_SIZE = 20;
 
 export default function PlatformUsersPage() {
   const router = useRouter();
+  const t = useTranslations("platform");
   const { user } = useAuth();
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -65,7 +71,7 @@ export default function PlatformUsersPage() {
 
   useEffect(() => {
     if (user && user.kind !== "superadmin") {
-      toastError("You don't have permission to manage users");
+      toastError(t("noPermissionManageUsers"));
       router.replace("/");
     }
   }, [user, router]);
@@ -122,7 +128,7 @@ export default function PlatformUsersPage() {
       .catch((err) => {
         if (rolesRequestRef.current === requestId) {
           setDialogRoles([]);
-          toastError(err instanceof Error ? err.message : "Failed to load roles");
+          toastError(err instanceof Error ? err.message : t("failedLoadRoles"));
         }
       })
       .finally(() => {
@@ -166,19 +172,19 @@ export default function PlatformUsersPage() {
   const handleToggleActive = async (row: AdminUserRow) => {
     if (row.isActive) {
       const ok = await confirmAction({
-        title: `Deactivate ${row.name}?`,
-        text: "They will no longer be able to sign in until reactivated.",
-        confirmText: "Deactivate",
+        title: t("deactivateTitle", { name: row.name }),
+        text: t("deactivateText"),
+        confirmText: t("deactivate"),
         icon: "warning",
       });
       if (!ok) return;
     }
     try {
       await api(`/admin/users/${row.id}`, { method: "PATCH", body: { isActive: !row.isActive } });
-      toastSuccess(row.isActive ? "User deactivated" : "User reactivated");
+      toastSuccess(row.isActive ? t("userDeactivated") : t("userReactivated"));
       fetchData(page);
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to update user");
+      toastError(err instanceof Error ? err.message : t("failedUpdateUser"));
     }
   };
 
@@ -186,7 +192,7 @@ export default function PlatformUsersPage() {
     const companyId = String(values.companyId ?? "");
     const roleId = String(values.roleId ?? "");
     if (editing && !roleId) {
-      toastError("Please select a role for this company");
+      toastError(t("selectRoleForCompany"));
       return;
     }
     try {
@@ -201,10 +207,10 @@ export default function PlatformUsersPage() {
             ...(avatarDraftUrl ? { avatarUrl: avatarDraftUrl } : {}),
           },
         });
-        toastSuccess("User updated");
+        toastSuccess(t("userUpdated"));
       } else {
         if (String(values.password).length < 8) {
-          toastError("Password must be at least 8 characters");
+          toastError(t("passwordMinLength"));
           return;
         }
         await api("/admin/users", {
@@ -218,12 +224,12 @@ export default function PlatformUsersPage() {
             ...(avatarDraftUrl ? { avatarUrl: avatarDraftUrl } : {}),
           },
         });
-        toastSuccess("User created");
+        toastSuccess(t("userCreated"));
       }
       closeDialog();
       fetchData(page);
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to save user");
+      toastError(err instanceof Error ? err.message : t("failedSaveUser"));
     }
   };
 
@@ -236,11 +242,11 @@ export default function PlatformUsersPage() {
 
   const dialogFields: FormField[] = editing
     ? [
-        { name: "name", label: "Name", required: true, defaultValue: editing.name },
-        { name: "companyId", label: "Company", type: "select", required: true, options: companyOptions, defaultValue: editing.companyId },
+        { name: "name", label: t("name"), required: true, defaultValue: editing.name },
+        { name: "companyId", label: t("company"), type: "select", required: true, options: companyOptions, defaultValue: editing.companyId },
         {
           name: "roleId",
-          label: "Role",
+          label: t("role"),
           type: "select",
           required: true,
           options: roleOptions,
@@ -248,13 +254,13 @@ export default function PlatformUsersPage() {
         },
       ]
     : [
-        { name: "name", label: "Name", required: true },
-        { name: "email", label: "Email", type: "email", required: true },
-        { name: "password", label: "Password", type: "password", required: true, helper: "At least 8 characters" },
-        { name: "companyId", label: "Company", type: "select", required: true, options: companyOptions },
+        { name: "name", label: t("name"), required: true },
+        { name: "email", label: t("email"), type: "email", required: true },
+        { name: "password", label: t("password"), type: "password", required: true, helper: t("passwordHelper") },
+        { name: "companyId", label: t("company"), type: "select", required: true, options: companyOptions },
         {
           name: "roleId",
-          label: "Role",
+          label: t("role"),
           type: "select",
           required: true,
           options: roleOptions,
@@ -266,13 +272,13 @@ export default function PlatformUsersPage() {
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Users" subtitle="Create and manage user accounts in every workspace." />
+        <PageHeader title={t("pageTitleUsers")} subtitle={t("pageSubtitleUsers")} />
       </motion.div>
       <motion.div variants={itemVariants}>
         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
           <TextField
             size="small"
-            placeholder="Search users..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             sx={{ width: 240 }}
@@ -280,13 +286,13 @@ export default function PlatformUsersPage() {
           <TextField
             size="small"
             select
-            label="Company"
+            label={t("company")}
             value={companyFilter}
             onChange={(e) => setCompanyFilter(e.target.value)}
             sx={{ width: 220 }}
             slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
           >
-            <MenuItem value="">All companies</MenuItem>
+            <MenuItem value="">{t("allCompanies")}</MenuItem>
             {companyOptions.map((option) => (
               <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
             ))}
@@ -295,7 +301,7 @@ export default function PlatformUsersPage() {
         <DataTable
           columns={[
             {
-              label: "User",
+              label: t("user"),
               render: (row) => (
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <Avatar src={assetUrl(row.avatarUrl)} sx={{ width: 34, height: 34, bgcolor: "#4f46e5", fontSize: 13, fontWeight: 700 }}>
@@ -309,11 +315,11 @@ export default function PlatformUsersPage() {
               ),
             },
             {
-              label: "Company",
+              label: t("company"),
               render: (row) => <Typography sx={{ fontSize: 13, color: "#475569" }}>{row.companyName}</Typography>,
             },
             {
-              label: "Role",
+              label: t("role"),
               render: (row) => (
                 <Chip
                   label={row.roleName}
@@ -322,35 +328,44 @@ export default function PlatformUsersPage() {
                 />
               ),
             },
-            { label: "Status", render: (row) => <StatusChip status={row.isActive ? "active" : "inactive"} /> },
-            { label: "Last login", render: (row) => dateShort(row.lastLoginAt) },
+            { label: t("status"), render: (row) => <StatusChip status={row.isActive ? "active" : "inactive"} /> },
+            { label: t("lastLogin"), render: (row) => dateShort(row.lastLoginAt) },
           ]}
           rows={users}
           total={total}
           page={page}
           onPageChange={setPage}
           loading={loading}
-          emptyTitle="No users"
-          emptySubtitle="User accounts across every workspace appear here"
+          emptyTitle={t("emptyUsersTitle")}
+          emptySubtitle={t("emptyUsersSubtitle")}
           emptyIcon={<PeopleOutlineIcon />}
           rowActions={(row) => (
-            <Stack direction="row" spacing={1} justifyContent="flex-end">
-              <Button size="small" variant="outlined" aria-label={`Edit ${row.name}`} onClick={() => openEdit(row)}>
-                <EditIcon fontSize="small" />
-              </Button>
-              <Button size="small" variant="outlined" color="error" onClick={() => void handleToggleActive(row)}>
-                {row.isActive ? "Deactivate" : "Reactivate"}
-              </Button>
+            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+              <Tooltip title={t("editAria", { name: row.name })}>
+                <IconButton size="small" color="primary" aria-label={t("editAria", { name: row.name })} onClick={() => openEdit(row)}>
+                  <EditOutlinedIcon sx={{ fontSize: 20 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title={row.isActive ? t("deactivate") : t("reactivate")}>
+                <IconButton
+                  size="small"
+                  color={row.isActive ? "error" : "success"}
+                  aria-label={row.isActive ? t("deactivate") : t("reactivate")}
+                  onClick={() => void handleToggleActive(row)}
+                >
+                  {row.isActive ? <BlockIcon sx={{ fontSize: 20 }} /> : <PlayCircleOutlineIcon sx={{ fontSize: 20 }} />}
+                </IconButton>
+              </Tooltip>
             </Stack>
           )}
           actions={
-            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>New user</Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>{t("newUser")}</Button>
           }
         />
         <FormDialog
           key={editing ? `edit-${editing.id}` : "new"}
           open={dialogOpen}
-          title={editing ? editing.name : "New user"}
+          title={editing ? editing.name : t("newUser")}
           maxWidth="sm"
           fields={dialogFields}
           initialValues={
@@ -361,14 +376,14 @@ export default function PlatformUsersPage() {
           onSubmit={handleSubmit}
           onClose={closeDialog}
           onFieldChange={handleDialogFieldChange}
-          submitLabel={editing ? "Save" : "Create user"}
+          submitLabel={editing ? t("save") : t("createUser")}
         >
           <Stack spacing={2}>
             <AvatarUpload value={avatarDraftUrl ?? (assetUrl(editing?.avatarUrl) ?? null)} onChange={setAvatarDraftUrl} />
             {editing && (
               <FormControlLabel
                 control={<Switch checked={editingActive} onChange={(e) => setEditingActive(e.target.checked)} />}
-                label={<Typography sx={{ fontSize: 13.5, color: "#0f172a" }}>Active</Typography>}
+                label={<Typography sx={{ fontSize: 13.5, color: "#0f172a" }}>{t("active")}</Typography>}
               />
             )}
           </Stack>

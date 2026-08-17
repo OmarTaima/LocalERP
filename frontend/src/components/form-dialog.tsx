@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import Box from "@mui/material/Box";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -48,7 +49,7 @@ export function FormDialog({
   initialValues,
   onSubmit,
   onClose,
-  submitLabel = "Save",
+  submitLabel,
   loading,
   maxWidth,
   children,
@@ -67,6 +68,7 @@ export function FormDialog({
   children?: ReactNode;
   onFieldChange?: (values: Record<string, string | number>) => void;
 }) {
+  const t = useTranslations("common");
   const [values, setValues] = useState<Record<string, string | number>>(() => {
     const seed: Record<string, string | number> = {};
     for (const field of fields) {
@@ -159,7 +161,7 @@ export function FormDialog({
                       input: {
                         endAdornment: (
                           <InputAdornment position="end">
-                            <IconButton edge="end" onClick={() => setShowPassword((value) => !value)} aria-label="Toggle password visibility">
+                            <IconButton edge="end" onClick={() => setShowPassword((value) => !value)} aria-label={t("togglePasswordVisibility")}>
                               {showPassword ? <VisibilityOff sx={{ fontSize: 19 }} /> : <Visibility sx={{ fontSize: 19 }} />}
                             </IconButton>
                           </InputAdornment>
@@ -179,9 +181,9 @@ export function FormDialog({
         {children && <Box sx={{ mt: 2.5 }}>{children}</Box>}
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} sx={{ color: "#64748b" }}>Cancel</Button>
+        <Button onClick={onClose} sx={{ color: "#64748b" }}>{t("cancel")}</Button>
         <Button variant="contained" onClick={() => void handleSubmit()} disabled={submitting || loading}>
-          {submitting ? "Saving…" : submitLabel}
+          {submitting ? t("saving") : submitLabel ?? t("save")}
         </Button>
       </DialogActions>
     </Dialog>
@@ -192,13 +194,14 @@ export function LineItemsEditor({
   lines,
   setLines,
   columns,
-  addLabel = "Add line",
+  addLabel,
 }: {
   lines: Record<string, string | number>[];
   setLines: (lines: Record<string, string | number>[]) => void;
   columns: LineItemField[];
   addLabel?: string;
 }) {
+  const t = useTranslations("common");
   const update = (index: number, key: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const next = lines.map((line, i) => (i === index ? { ...line, [key]: event.target.value } : line));
     setLines(next);
@@ -247,7 +250,7 @@ export function LineItemsEditor({
         </Stack>
       ))}
       <Button size="small" startIcon={<AddCircleOutlineIcon />} onClick={add} sx={{ alignSelf: "flex-start", textTransform: "none" }}>
-        {addLabel}
+        {addLabel ?? t("addLine")}
       </Button>
       <Divider sx={{ mt: 1.5 }} />
     </Stack>

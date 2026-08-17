@@ -149,8 +149,24 @@ export function useCachedApi<T>(path: string): { data: T | null; loading: boolea
   return { data, loading, refresh };
 }
 
-export const currency = (value: number | undefined | null): string =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value ?? 0);
+let formatLocale: "en" | "ar" = "en";
+let companyCurrency = "USD";
+
+export function setFormatLocale(locale: "en" | "ar"): void {
+  formatLocale = locale;
+}
+
+export function setCompanyCurrency(currencyCode: string): void {
+  companyCurrency = currencyCode;
+}
+
+const formatLocaleString = (): string => (formatLocale === "ar" ? "ar-EG-u-nu-latn" : "en-US");
+
+export const currency = (value: number | undefined | null, opts?: { maxFractionDigits?: number }): string => {
+  const options: Intl.NumberFormatOptions = { style: "currency", currency: companyCurrency };
+  if (opts?.maxFractionDigits !== undefined) options.maximumFractionDigits = opts.maxFractionDigits;
+  return new Intl.NumberFormat(formatLocaleString(), options).format(value ?? 0);
+};
 
 export const dateShort = (iso: string | null | undefined): string =>
-  iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+  iso ? new Date(iso).toLocaleDateString(formatLocaleString(), { month: "short", day: "numeric", year: "numeric" }) : "—";

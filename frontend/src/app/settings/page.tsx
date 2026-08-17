@@ -20,11 +20,13 @@ import SaveIcon from "@mui/icons-material/Save";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import { useTranslations } from "next-intl";
 import { AppShell, itemVariants } from "@/components/app-shell";
 import { PageHeader, toastSuccess, toastError, confirmAction } from "@/components/ui";
 import { AvatarUpload } from "@/components/avatar-upload";
 import { api, assetUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useAppLocale } from "@/lib/locale";
 
 type CompanySettings = { currency: string; taxRate: number; timezone: string };
 type CompanyDoc = {
@@ -47,10 +49,11 @@ const PLAN_TONES: Record<string, { bg: string; color: string }> = {
   enterprise: { bg: "#fef3c7", color: "#d97706" },
 };
 
-const numberFormat = new Intl.NumberFormat("en-US");
-
 export default function SettingsPage() {
+  const t = useTranslations("settings");
+  const { locale } = useAppLocale();
   const { user } = useAuth();
+  const numberFormat = new Intl.NumberFormat(locale === "ar" ? "ar-EG-u-nu-latn" : "en-US");
   const [tab, setTab] = useState(0);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.kind === "company" ? user.avatarUrl : null);
@@ -105,9 +108,9 @@ export default function SettingsPage() {
     try {
       const res = await api<{ avatarUrl: string }>("/auth/avatar", { method: "POST", body: { avatarUrl: url } });
       setAvatarUrl(res.avatarUrl);
-      toastSuccess("Avatar updated");
+      toastSuccess(t("avatarUpdated"));
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to upload avatar");
+      toastError(err instanceof Error ? err.message : t("failedUploadAvatar"));
     } finally {
       setUploading(false);
     }
@@ -119,9 +122,9 @@ export default function SettingsPage() {
     try {
       const res = await api<{ logoUrl: string }>("/company/logo", { method: "POST", body: { logoUrl: url } });
       setCompany({ ...company, logoUrl: res.logoUrl });
-      toastSuccess("Logo updated");
+      toastSuccess(t("logoUpdated"));
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to upload logo");
+      toastError(err instanceof Error ? err.message : t("failedUploadLogo"));
     } finally {
       setLogoUploading(false);
     }
@@ -129,25 +132,25 @@ export default function SettingsPage() {
 
   const handlePasswordChange = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toastError("All password fields are required");
+      toastError(t("allPasswordFieldsRequired"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      toastError("New passwords do not match");
+      toastError(t("newPasswordsDoNotMatch"));
       return;
     }
     if (newPassword.length < 8) {
-      toastError("New password must be at least 8 characters");
+      toastError(t("newPasswordMinLength"));
       return;
     }
     if (!/[A-Z]/.test(newPassword)) {
-      toastError("New password must include an uppercase letter");
+      toastError(t("newPasswordUppercase"));
       return;
     }
     const ok = await confirmAction({
-      title: "Change password?",
-      text: "You will be required to sign in again on other devices.",
-      confirmText: "Change password",
+      title: t("changePasswordTitle"),
+      text: t("changePasswordText"),
+      confirmText: t("changePassword"),
     });
     if (!ok) return;
     setSavingPassword(true);
@@ -156,12 +159,12 @@ export default function SettingsPage() {
         method: "PATCH",
         body: { currentPassword, newPassword },
       });
-      toastSuccess("Password changed");
+      toastSuccess(t("passwordChanged"));
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to change password");
+      toastError(err instanceof Error ? err.message : t("failedChangePassword"));
     } finally {
       setSavingPassword(false);
     }
@@ -174,9 +177,9 @@ export default function SettingsPage() {
         method: "PATCH",
         body: { name: companyName.trim(), settings: { currency, taxRate: Number(taxRate), timezone } },
       });
-      toastSuccess("Settings saved");
+      toastSuccess(t("settingsSaved"));
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to save settings");
+      toastError(err instanceof Error ? err.message : t("failedSaveSettings"));
     } finally {
       setSaving(false);
     }
@@ -188,11 +191,11 @@ export default function SettingsPage() {
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Settings" subtitle="Manage your account and how your workspace works." />
+        <PageHeader title={t("pageTitle")} subtitle={t("pageSubtitle")} />
         <Box sx={{ mb: 1 }}>
           <Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{ minHeight: 48 }}>
-            <Tab label="User settings" />
-            <Tab label="Company settings" />
+            <Tab label={t("tabUserSettings")} />
+            <Tab label={t("tabCompanySettings")} />
           </Tabs>
         </Box>
       </motion.div>
@@ -202,7 +205,7 @@ export default function SettingsPage() {
           {!canEditProfile && (
             <motion.div variants={itemVariants}>
               <Alert severity="info" sx={{ mb: 2.5, fontSize: 13 }}>
-                You have read-only access. Ask an administrator for changes.
+                {t("readOnlyProfileAlert")}
               </Alert>
             </motion.div>
           )}
@@ -222,7 +225,7 @@ export default function SettingsPage() {
                     <Typography sx={{ color: "#64748b", fontSize: 13 }}>{user?.email}</Typography>
                     {user?.kind === "company" && (
                       <Typography sx={{ color: "#94a3b8", fontSize: 12, mt: 0.5 }}>
-                        {user.roleName} · {user.isActive ? "Active" : "Inactive"}
+                        {user.roleName} · {user.isActive ? t("active") : t("inactive")}
                       </Typography>
                     )}
                   </Box>
@@ -230,17 +233,17 @@ export default function SettingsPage() {
                 <Divider />
                 <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 2 }}>
                   <LockOutlinedIcon sx={{ color: "#64748b", fontSize: 18 }} />
-                  <Typography sx={{ fontSize: 13, color: "#64748b" }}>Account access is managed by your workspace role.</Typography>
+                  <Typography sx={{ fontSize: 13, color: "#64748b" }}>{t("accountAccessManaged")}</Typography>
                 </Stack>
               </Paper>
             </motion.div>
 
             <motion.div variants={itemVariants}>
               <Paper elevation={0} sx={{ p: 3, border: "1px solid #e2e8f0", borderRadius: 3, height: "100%" }}>
-                <Typography variant="h6" sx={{ color: "#0f172a", mb: 2 }}>Change password</Typography>
+                <Typography variant="h6" sx={{ color: "#0f172a", mb: 2 }}>{t("changePassword")}</Typography>
                 <Stack spacing={2}>
                   <TextField
-                    label="Current password"
+                    label={t("currentPassword")}
                     type={showCurrent ? "text" : "password"}
                     size="small"
                     value={currentPassword}
@@ -259,13 +262,13 @@ export default function SettingsPage() {
                     }}
                   />
                   <TextField
-                    label="New password"
+                    label={t("newPassword")}
                     type={showNew ? "text" : "password"}
                     size="small"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     disabled={!canEditProfile || savingPassword}
-                    helperText="Must include 1 uppercase letter"
+                    helperText={t("passwordHelper")}
                     slotProps={{
                       input: {
                         endAdornment: (
@@ -279,7 +282,7 @@ export default function SettingsPage() {
                     }}
                   />
                   <TextField
-                    label="Confirm new password"
+                    label={t("confirmNewPassword")}
                     type={showConfirm ? "text" : "password"}
                     size="small"
                     value={confirmPassword}
@@ -306,7 +309,7 @@ export default function SettingsPage() {
                     disabled={savingPassword}
                     sx={{ mt: 2 }}
                   >
-                    {savingPassword ? "Saving…" : "Change password"}
+                    {savingPassword ? t("saving") : t("changePassword")}
                   </Button>
                 )}
               </Paper>
@@ -320,7 +323,7 @@ export default function SettingsPage() {
           {!canEditCompany && (
             <motion.div variants={itemVariants}>
               <Alert severity="info" sx={{ mb: 2.5, fontSize: 13 }}>
-                You have read-only access to workspace settings. Ask an administrator to make changes.
+                {t("readOnlyWorkspaceAlert")}
               </Alert>
             </motion.div>
           )}
@@ -329,7 +332,7 @@ export default function SettingsPage() {
               <Paper elevation={0} sx={{ p: 3, border: "1px solid #e2e8f0", borderRadius: 3, height: "100%" }}>
                 {!company && !loading && (
                   <Typography sx={{ color: "#dc2626", fontSize: 13.5, fontWeight: 600 }}>
-                    Could not load company settings. Check that the backend is running.
+                    {t("couldNotLoadCompanySettings")}
                   </Typography>
                 )}
                 {company && (
@@ -353,13 +356,13 @@ export default function SettingsPage() {
                     <Divider sx={{ my: 2 }} />
                     <Stack direction="row" spacing={5}>
                       <Box>
-                        <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94a3b8" }}>Users</Typography>
+                        <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94a3b8" }}>{t("users")}</Typography>
                         <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#0f172a", mt: 0.5 }}>
-                          {usersTotal} <Box component="span" sx={{ fontSize: 14, fontWeight: 500, color: "#94a3b8" }}>of {company.limits.maxUsers}</Box>
+                          {usersTotal} <Box component="span" sx={{ fontSize: 14, fontWeight: 500, color: "#94a3b8" }}>{t("ofMaxUsers", { max: company.limits.maxUsers })}</Box>
                         </Typography>
                       </Box>
                       <Box>
-                        <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94a3b8" }}>Products</Typography>
+                        <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94a3b8" }}>{t("products")}</Typography>
                         <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#0f172a", mt: 0.5 }}>
                           {numberFormat.format(productsTotal)}
                         </Typography>
@@ -372,13 +375,13 @@ export default function SettingsPage() {
 
             <motion.div variants={itemVariants}>
               <Paper elevation={0} sx={{ p: 3, border: "1px solid #e2e8f0", borderRadius: 3, height: "100%" }}>
-                <Typography variant="h6" sx={{ color: "#0f172a", mb: 0.5 }}>Workspace settings</Typography>
+                <Typography variant="h6" sx={{ color: "#0f172a", mb: 0.5 }}>{t("workspaceSettingsTitle")}</Typography>
                 <Typography sx={{ color: "#94a3b8", fontSize: 13, mb: 2 }}>
-                  Company name, currency, tax and timezone used across the workspace
+                  {t("workspaceSettingsSubtitle")}
                 </Typography>
                 <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2.5 }}>
                   <TextField
-                    label="Company name"
+                    label={t("companyName")}
                     size="small"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
@@ -386,7 +389,7 @@ export default function SettingsPage() {
                     sx={{ gridColumn: { xs: "auto", sm: "1 / -1" } }}
                   />
                   <TextField
-                    label="Currency"
+                    label={t("currency")}
                     select
                     size="small"
                     value={currency}
@@ -396,7 +399,7 @@ export default function SettingsPage() {
                     {CURRENCIES.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
                   </TextField>
                   <TextField
-                    label="Tax rate"
+                    label={t("taxRate")}
                     type="number"
                     size="small"
                     value={taxRate}
@@ -408,7 +411,7 @@ export default function SettingsPage() {
                     }}
                   />
                   <TextField
-                    label="Timezone"
+                    label={t("timezone")}
                     select
                     size="small"
                     value={timezone}
@@ -427,7 +430,7 @@ export default function SettingsPage() {
                     disabled={saving}
                     sx={{ mt: 3 }}
                   >
-                    {saving ? "Saving…" : "Save settings"}
+                    {saving ? t("saving") : t("saveSettings")}
                   </Button>
                 )}
               </Paper>

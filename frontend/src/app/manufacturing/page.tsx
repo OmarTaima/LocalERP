@@ -6,14 +6,21 @@ import Stack from "@mui/material/Stack";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
+import BlockIcon from "@mui/icons-material/Block";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CloseIcon from "@mui/icons-material/Close";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import { AppShell, itemVariants } from "@/components/app-shell";
 import { PageHeader, StatusChip, toastSuccess, toastError, confirmAction } from "@/components/ui";
 import { DataTable } from "@/components/data-table";
 import { FormDialog, LineItemsEditor } from "@/components/form-dialog";
 import { useList, currency, dateShort } from "@/lib/use-list";
 import { api } from "@/lib/api";
+import { useTranslations } from "next-intl";
 
 type WorkCenter = { id: string; name: string; costPerHour: number; capacity: number; isActive: boolean };
 type Bom = { id: string; productId: string; components: { productId: string; quantity: number }[]; outputQuantity: number; version: number; createdAt: string };
@@ -24,6 +31,7 @@ function WorkCentersTab() {
   const [rows, setRows] = useState<WorkCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const t = useTranslations("manufacturing");
 
   const refresh = () => {
     setLoading(true);
@@ -37,29 +45,29 @@ function WorkCentersTab() {
     <>
       <DataTable
         columns={[
-          { label: "Name", render: (row) => <Typography sx={{ fontWeight: 600, color: "#0f172a" }}>{row.name}</Typography> },
-          { label: "Cost / hour", render: (row) => currency(row.costPerHour) },
-          { label: "Capacity", render: (row) => row.capacity },
-          { label: "Status", render: (row) => <StatusChip status={row.isActive ? "active" : "inactive"} /> },
+          { label: t("name"), render: (row) => <Typography sx={{ fontWeight: 600, color: "#0f172a" }}>{row.name}</Typography> },
+          { label: t("costPerHourColumn"), render: (row) => currency(row.costPerHour) },
+          { label: t("capacity"), render: (row) => row.capacity },
+          { label: t("status"), render: (row) => <StatusChip status={row.isActive ? "active" : "inactive"} /> },
         ]}
         rows={rows}
         total={rows.length}
         page={1}
         onPageChange={() => undefined}
         loading={loading}
-        emptyTitle="No work centers"
-        emptySubtitle="Work centers carry labor costs for work orders"
+        emptyTitle={t("workCenterEmptyTitle")}
+        emptySubtitle={t("workCenterEmptySubtitle")}
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>New work center</Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>{t("newWorkCenter")}</Button>
         }
       />
       <FormDialog
         open={createOpen}
-        title="New work center"
+        title={t("newWorkCenter")}
         fields={[
-          { name: "name", label: "Name", required: true },
-          { name: "costPerHour", label: "Cost per hour", type: "number", required: true },
-          { name: "capacity", label: "Capacity (units/hour)", type: "number", required: true },
+          { name: "name", label: t("name"), required: true },
+          { name: "costPerHour", label: t("costPerHour"), type: "number", required: true },
+          { name: "capacity", label: t("capacityPerHour"), type: "number", required: true },
         ]}
         onSubmit={async (values) => {
           try {
@@ -67,15 +75,15 @@ function WorkCentersTab() {
               method: "POST",
               body: { name: values.name, costPerHour: Number(values.costPerHour), capacity: Number(values.capacity) },
             });
-            toastSuccess("Work center created");
+            toastSuccess(t("workCenterCreated"));
             setCreateOpen(false);
             refresh();
           } catch (err) {
-            toastError(err instanceof Error ? err.message : "failed to create work center");
+            toastError(err instanceof Error ? err.message : t("workCenterCreateFailed"));
           }
         }}
         onClose={() => setCreateOpen(false)}
-        submitLabel="Create"
+        submitLabel={t("create")}
       />
     </>
   );
@@ -87,6 +95,7 @@ function BomsTab() {
   const [createOpen, setCreateOpen] = useState(false);
   const [lines, setLines] = useState<Record<string, string | number>[]>([]);
   const [products, setProducts] = useState<{ id: string; name: string; sku: string }[]>([]);
+  const t = useTranslations("manufacturing");
 
   const refresh = () => {
     setLoading(true);
@@ -103,7 +112,7 @@ function BomsTab() {
       setLines([]);
       setCreateOpen(true);
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "failed to load products");
+      toastError(err instanceof Error ? err.message : t("referenceDataLoadFailed"));
     }
   };
 
@@ -111,29 +120,29 @@ function BomsTab() {
     <>
       <DataTable
         columns={[
-          { label: "Product", render: (row) => `#${row.productId.slice(-6)}` },
-          { label: "Components", render: (row) => `${row.components.length} components` },
-          { label: "Output", render: (row) => row.outputQuantity },
-          { label: "Version", render: (row) => `v${row.version}` },
-          { label: "Created", render: (row) => dateShort(row.createdAt) },
+          { label: t("product"), render: (row) => `#${row.productId.slice(-6)}` },
+          { label: t("bomColumnComponents"), render: (row) => t("componentsCount", { count: row.components.length }) },
+          { label: t("bomColumnOutput"), render: (row) => row.outputQuantity },
+          { label: t("bomColumnVersion"), render: (row) => `v${row.version}` },
+          { label: t("created"), render: (row) => dateShort(row.createdAt) },
         ]}
         rows={rows}
         total={rows.length}
         page={1}
         onPageChange={() => undefined}
         loading={loading}
-        emptyTitle="No BOMs"
-        emptySubtitle="Define how finished goods are assembled"
+        emptyTitle={t("bomEmptyTitle")}
+        emptySubtitle={t("bomEmptySubtitle")}
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => void openCreate()}>New BOM</Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => void openCreate()}>{t("newBom")}</Button>
         }
       />
       <FormDialog
         open={createOpen}
-        title="New bill of materials"
+        title={t("bomDialogTitle")}
         fields={[
-          { name: "productId", label: "Finished good", type: "select", required: true, options: products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })) },
-          { name: "outputQuantity", label: "Output quantity", type: "number", required: true, defaultValue: 1 },
+          { name: "productId", label: t("finishedGood"), type: "select", required: true, options: products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })) },
+          { name: "outputQuantity", label: t("outputQuantity"), type: "number", required: true, defaultValue: 1 },
         ]}
         onSubmit={async (values) => {
           try {
@@ -145,23 +154,23 @@ function BomsTab() {
                 components: lines.map((line) => ({ productId: line.productId, quantity: Number(line.quantity) })),
               },
             });
-            toastSuccess("BOM created");
+            toastSuccess(t("bomCreated"));
             setCreateOpen(false);
             refresh();
           } catch (err) {
-            toastError(err instanceof Error ? err.message : "failed to create BOM");
+            toastError(err instanceof Error ? err.message : t("bomCreateFailed"));
           }
         }}
         onClose={() => setCreateOpen(false)}
-        submitLabel="Create BOM"
+        submitLabel={t("createBom")}
       >
         <LineItemsEditor
           lines={lines}
           setLines={setLines}
-          addLabel="Add component"
+          addLabel={t("addComponent")}
           columns={[
-            { key: "productId", label: "Component", type: "select", options: products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })), required: true },
-            { key: "quantity", label: "Qty per output", type: "number", required: true },
+            { key: "productId", label: t("component"), type: "select", options: products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })), required: true },
+            { key: "quantity", label: t("qtyPerOutput"), type: "number", required: true },
           ]}
         />
       </FormDialog>
@@ -174,6 +183,7 @@ function WorkOrdersTab() {
   const [createOpen, setCreateOpen] = useState(false);
   const [boms, setBoms] = useState<Bom[]>([]);
   const [workCenters, setWorkCenters] = useState<WorkCenter[]>([]);
+  const t = useTranslations("manufacturing");
 
   const openCreate = async () => {
     try {
@@ -182,23 +192,23 @@ function WorkOrdersTab() {
       setWorkCenters(centerRows);
       setCreateOpen(true);
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "failed to load reference data");
+      toastError(err instanceof Error ? err.message : t("referenceDataLoadFailed"));
     }
   };
 
   const transition = async (wo: WorkOrder, action: "start" | "complete" | "cancel") => {
     const ok = await confirmAction({
-      title: `${action} ${wo.woNumber}?`,
-      text: action === "start" ? "Materials are consumed from the default warehouse." : action === "complete" ? "Finished goods are batched and journaled." : "The order is cancelled.",
-      confirmText: action.charAt(0).toUpperCase() + action.slice(1),
+      title: action === "start" ? t("woStartTitle", { wo: wo.woNumber }) : action === "complete" ? t("woCompleteTitle", { wo: wo.woNumber }) : t("woCancelTitle", { wo: wo.woNumber }),
+      text: action === "start" ? t("woStartText") : action === "complete" ? t("woCompleteText") : t("woCancelText"),
+      confirmText: action === "start" ? t("start") : action === "complete" ? t("complete") : t("cancel"),
     });
     if (!ok) return;
     try {
       await api(`/work-orders/${wo.id}/${action}`, { method: "POST" });
-      toastSuccess(`${wo.woNumber} ${action}ed`);
+      toastSuccess(action === "start" ? t("woStarted", { wo: wo.woNumber }) : action === "complete" ? t("woCompleted", { wo: wo.woNumber }) : t("woCanceled", { wo: wo.woNumber }));
       void refresh();
     } catch (err) {
-      toastError(err instanceof Error ? err.message : `failed to ${action} work order`);
+      toastError(err instanceof Error ? err.message : action === "start" ? t("woStartFailed") : action === "complete" ? t("woCompleteFailed") : t("woCancelFailed"));
     }
   };
 
@@ -206,39 +216,57 @@ function WorkOrdersTab() {
     <>
       <DataTable
         columns={[
-          { label: "WO", render: (row) => <Typography sx={{ fontWeight: 600, color: "#4f46e5" }}>{row.woNumber}</Typography> },
-          { label: "Product", render: (row) => `#${row.productId.slice(-6)}` },
-          { label: "Quantity", render: (row) => row.quantity },
-          { label: "Planned hours", render: (row) => row.plannedHours },
-          { label: "Unit cost", render: (row) => (row.unitCost > 0 ? currency(row.unitCost) : "—") },
-          { label: "Status", render: (row) => <StatusChip status={row.status} /> },
+          { label: t("woColumnWo"), render: (row) => <Typography sx={{ fontWeight: 600, color: "#4f46e5" }}>{row.woNumber}</Typography> },
+          { label: t("product"), render: (row) => `#${row.productId.slice(-6)}` },
+          { label: t("quantity"), render: (row) => row.quantity },
+          { label: t("woColumnPlannedHours"), render: (row) => row.plannedHours },
+          { label: t("woColumnUnitCost"), render: (row) => (row.unitCost > 0 ? currency(row.unitCost) : "—") },
+          { label: t("status"), render: (row) => <StatusChip status={row.status} /> },
         ]}
         rows={rows}
         total={total}
         page={page}
         onPageChange={setPage}
         loading={loading}
-        emptyTitle="No work orders"
-        emptySubtitle="Release production through work orders"
+        emptyTitle={t("workOrderEmptyTitle")}
+        emptySubtitle={t("workOrderEmptySubtitle")}
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => void openCreate()}>New work order</Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => void openCreate()}>{t("newWorkOrder")}</Button>
         }
         rowActions={(row) => (
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
-            {row.status === "draft" && <Button size="small" variant="contained" onClick={() => void transition(row, "start")}>Start</Button>}
-            {row.status === "in-progress" && <Button size="small" variant="contained" onClick={() => void transition(row, "complete")}>Complete</Button>}
-            {(row.status === "draft" || row.status === "released") && <Button size="small" variant="outlined" color="error" onClick={() => void transition(row, "cancel")}>Cancel</Button>}
+          <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+            {row.status === "draft" && (
+              <Tooltip title={t("start")}>
+                <IconButton size="small" color="primary" aria-label={t("start")} onClick={() => void transition(row, "start")}>
+                  <PlayArrowRoundedIcon sx={{ fontSize: 20 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {row.status === "in-progress" && (
+              <Tooltip title={t("complete")}>
+                <IconButton size="small" color="success" aria-label={t("complete")} onClick={() => void transition(row, "complete")}>
+                  <CheckCircleOutlineIcon sx={{ fontSize: 20 }} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {(row.status === "draft" || row.status === "released") && (
+              <Tooltip title={t("cancel")}>
+                <IconButton size="small" color="error" aria-label={t("cancel")} onClick={() => void transition(row, "cancel")}>
+                  <BlockIcon sx={{ fontSize: 20 }} />
+                </IconButton>
+              </Tooltip>
+            )}
           </Stack>
         )}
       />
       <FormDialog
         open={createOpen}
-        title="New work order"
+        title={t("newWorkOrder")}
         fields={[
-          { name: "bomId", label: "BOM", type: "select", required: true, options: boms.map((b) => ({ value: b.id, label: `${b.productId.slice(-6)} (output ${b.outputQuantity})` })) },
-          { name: "workCenterId", label: "Work center", type: "select", required: true, options: workCenters.map((c) => ({ value: c.id, label: c.name })) },
-          { name: "quantity", label: "Quantity", type: "number", required: true },
-          { name: "plannedHours", label: "Planned hours", type: "number", required: true },
+          { name: "bomId", label: t("bom"), type: "select", required: true, options: boms.map((b) => ({ value: b.id, label: t("bomOption", { id: b.productId.slice(-6), output: b.outputQuantity }) })) },
+          { name: "workCenterId", label: t("workCenter"), type: "select", required: true, options: workCenters.map((c) => ({ value: c.id, label: c.name })) },
+          { name: "quantity", label: t("quantity"), type: "number", required: true },
+          { name: "plannedHours", label: t("woColumnPlannedHours"), type: "number", required: true },
         ]}
         onSubmit={async (values) => {
           try {
@@ -251,15 +279,15 @@ function WorkOrdersTab() {
                 plannedHours: Number(values.plannedHours),
               },
             });
-            toastSuccess("Work order created");
+            toastSuccess(t("workOrderCreated"));
             setCreateOpen(false);
             void refresh();
           } catch (err) {
-            toastError(err instanceof Error ? err.message : "failed to create work order");
+            toastError(err instanceof Error ? err.message : t("workOrderCreateFailed"));
           }
         }}
         onClose={() => setCreateOpen(false)}
-        submitLabel="Create WO"
+        submitLabel={t("createWo")}
       />
     </>
   );
@@ -267,45 +295,54 @@ function WorkOrdersTab() {
 
 function MrpTab() {
   const { rows, total, page, setPage, loading, refresh } = useList<MrpSuggestion>("/mrp/suggestions");
+  const t = useTranslations("manufacturing");
 
   const act = async (suggestion: MrpSuggestion, status: "actioned" | "dismissed") => {
     const ok = await confirmAction({
-      title: status === "actioned" ? "Action this suggestion?" : "Dismiss this suggestion?",
-      text: status === "actioned" ? "Purchase suggestions become POs; produce suggestions become work orders." : "It will be removed from the queue.",
-      confirmText: status === "actioned" ? "Action" : "Dismiss",
+      title: status === "actioned" ? t("mrpActionTitle") : t("mrpDismissTitle"),
+      text: status === "actioned" ? t("mrpActionText") : t("mrpDismissText"),
+      confirmText: status === "actioned" ? t("action") : t("dismiss"),
     });
     if (!ok) return;
     try {
       await api(`/mrp/suggestions/${suggestion.id}/action`, { method: "POST", body: { status } });
-      toastSuccess(`Suggestion ${status}`);
+      toastSuccess(status === "actioned" ? t("mrpActioned") : t("mrpDismissed"));
       void refresh();
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "failed to update suggestion");
+      toastError(err instanceof Error ? err.message : t("mrpUpdateFailed"));
     }
   };
 
   return (
     <DataTable
       columns={[
-        { label: "Type", render: (row) => <Typography sx={{ fontWeight: 600, textTransform: "capitalize", color: "#4f46e5" }}>{row.type}</Typography> },
-        { label: "Product", render: (row) => `#${row.productId.slice(-6)}` },
-        { label: "Warehouse", render: (row) => `#${row.warehouseId.slice(-6)}` },
-        { label: "Quantity", render: (row) => <Typography sx={{ fontWeight: 600 }}>{row.quantity}</Typography> },
-        { label: "Status", render: (row) => <StatusChip status={row.status} /> },
-        { label: "Created", render: (row) => dateShort(row.createdAt) },
+        { label: t("mrpColumnType"), render: (row) => <Typography sx={{ fontWeight: 600, textTransform: "capitalize", color: "#4f46e5" }}>{row.type}</Typography> },
+        { label: t("product"), render: (row) => `#${row.productId.slice(-6)}` },
+        { label: t("mrpColumnWarehouse"), render: (row) => `#${row.warehouseId.slice(-6)}` },
+        { label: t("quantity"), render: (row) => <Typography sx={{ fontWeight: 600 }}>{row.quantity}</Typography> },
+        { label: t("status"), render: (row) => <StatusChip status={row.status} /> },
+        { label: t("created"), render: (row) => dateShort(row.createdAt) },
       ]}
       rows={rows}
       total={total}
       page={page}
       onPageChange={setPage}
       loading={loading}
-      emptyTitle="No MRP suggestions"
-      emptySubtitle="Run MRP to detect shortage gaps"
+      emptyTitle={t("mrpEmptyTitle")}
+      emptySubtitle={t("mrpEmptySubtitle")}
       rowActions={(row) =>
         row.status === "open" ? (
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
-            <Button size="small" variant="contained" onClick={() => void act(row, "actioned")}>Action</Button>
-            <Button size="small" variant="outlined" onClick={() => void act(row, "dismissed")}>Dismiss</Button>
+          <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+            <Tooltip title={t("action")}>
+              <IconButton size="small" color="primary" aria-label={t("action")} onClick={() => void act(row, "actioned")}>
+                <PlayArrowRoundedIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t("dismiss")}>
+              <IconButton size="small" color="error" aria-label={t("dismiss")} onClick={() => void act(row, "dismissed")}>
+                <CloseIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
           </Stack>
         ) : null
       }
@@ -315,11 +352,12 @@ function MrpTab() {
 
 export default function ManufacturingPage() {
   const [tab, setTab] = useState(0);
+  const t = useTranslations("manufacturing");
 
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Manufacturing" subtitle="Plan production and turn raw materials into finished goods." />
+        <PageHeader title={t("pageTitle")} subtitle={t("pageSubtitle")} />
         <Tabs
           value={tab}
           onChange={(_, value) => setTab(value)}
@@ -328,10 +366,10 @@ export default function ManufacturingPage() {
           allowScrollButtonsMobile
           sx={{ mb: 3, "& .MuiTab-root": { textTransform: "none", fontWeight: 600, fontSize: 13.5 } }}
         >
-          <Tab label="Work orders" />
-          <Tab label="BOMs" />
-          <Tab label="Work centers" />
-          <Tab label="MRP suggestions" />
+          <Tab label={t("tabWorkOrders")} />
+          <Tab label={t("tabBoms")} />
+          <Tab label={t("tabWorkCenters")} />
+          <Tab label={t("tabMrpSuggestions")} />
         </Tabs>
       </motion.div>
       {tab === 0 && <WorkOrdersTab />}

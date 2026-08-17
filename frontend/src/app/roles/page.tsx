@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Chip from "@mui/material/Chip";
@@ -11,10 +12,12 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import { AppShell, itemVariants } from "@/components/app-shell";
 import { PageHeader, toastSuccess, toastError, confirmAction } from "@/components/ui";
@@ -29,6 +32,7 @@ type RoleRow = { id: string; name: string; permissions: string[]; isSystem: bool
 type UserRow = { id: string; roleId: string };
 
 export default function RolesPage() {
+  const t = useTranslations("roles");
   const router = useRouter();
   const { user } = useAuth();
   const { rows, total, page, setPage, loading, refresh } = useList<RoleRow>("/roles", { pageSize: 100 });
@@ -45,7 +49,7 @@ export default function RolesPage() {
 
   useEffect(() => {
     if (user && !canRead) {
-      toastError("You don't have permission to manage roles");
+      toastError(t("noPermission"));
       router.replace("/");
     }
   }, [user, canRead, router]);
@@ -78,33 +82,33 @@ export default function RolesPage() {
 
   const handleDelete = async (role: RoleRow) => {
     const ok = await confirmAction({
-      title: `Delete role ${role.name}?`,
-      text: "Members assigned to this role must be reassigned first.",
-      confirmText: "Delete",
+      title: t("deleteTitle", { name: role.name }),
+      text: t("deleteText"),
+      confirmText: t("delete"),
       icon: "warning",
     });
     if (!ok) return;
     try {
       await api(`/roles/${role.id}`, { method: "DELETE" });
-      toastSuccess("Role deleted");
+      toastSuccess(t("roleDeleted"));
       refresh();
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to delete role");
+      toastError(err instanceof Error ? err.message : t("failedDeleteRole"));
     }
   };
 
   const handleCreate = async (values: Record<string, string | number>) => {
     if (perms.length === 0) {
-      toastError("Select at least one permission");
+      toastError(t("selectPermission"));
       return;
     }
     try {
       await api("/roles", { method: "POST", body: { name: values.name, permissions: perms } });
-      toastSuccess("Role created");
+      toastSuccess(t("roleCreated"));
       setCreateOpen(false);
       refresh();
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to create role");
+      toastError(err instanceof Error ? err.message : t("failedCreateRole"));
     }
   };
 
@@ -112,11 +116,11 @@ export default function RolesPage() {
     if (!editingRole) return;
     try {
       await api(`/roles/${editingRole.id}`, { method: "PATCH", body: { permissions: perms } });
-      toastSuccess("Role updated");
+      toastSuccess(t("roleUpdated"));
       closePermDialog();
       refresh();
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Failed to update role");
+      toastError(err instanceof Error ? err.message : t("failedUpdateRole"));
     }
   };
 
@@ -125,50 +129,54 @@ export default function RolesPage() {
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Roles" subtitle="Control what each role can see and do in your workspace." />
+        <PageHeader title={t("pageTitle")} subtitle={t("pageSubtitle")} />
       </motion.div>
       <motion.div variants={itemVariants}>
         <DataTable
           columns={[
             {
-              label: "Role",
+              label: t("role"),
               render: (row) => (
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Typography sx={{ fontWeight: 600, fontSize: 13.5, color: "#0f172a" }}>{row.name}</Typography>
                   {row.isSystem && (
-                    <Chip label="System" size="small" sx={{ bgcolor: "#f1f5f9", color: "#475569", fontWeight: 700, fontSize: 11 }} />
+                    <Chip label={t("system")} size="small" sx={{ bgcolor: "#f1f5f9", color: "#475569", fontWeight: 700, fontSize: 11 }} />
                   )}
                 </Stack>
               ),
             },
-            { label: "Members", render: (row) => `${memberCountById.get(row.id) ?? 0} users` },
-            { label: "Permissions", render: (row) => `${row.permissions.length} permissions` },
+            { label: t("members"), render: (row) => t("membersCount", { count: memberCountById.get(row.id) ?? 0 }) },
+            { label: t("permissions"), render: (row) => t("permissionsCount", { count: row.permissions.length }) },
           ]}
           rows={rows}
           total={total}
           page={page}
           onPageChange={setPage}
           loading={loading}
-          emptyTitle="No roles"
-          emptySubtitle="Create your first role to control what team members can do"
+          emptyTitle={t("emptyTitle")}
+          emptySubtitle={t("emptySubtitle")}
           emptyIcon={<AdminPanelSettingsOutlinedIcon />}
           rowActions={(row) => (
-            <Stack direction="row" spacing={1} justifyContent="flex-end">
+            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
               {canWrite && row.name !== "admin" && (
-                <Button size="small" variant="outlined" aria-label={`Edit ${row.name}`} onClick={() => openPermDialog(row)}>
-                  <EditIcon fontSize="small" />
-                </Button>
+                <Tooltip title={t("editAria", { name: row.name })}>
+                  <IconButton size="small" color="primary" aria-label={t("editAria", { name: row.name })} onClick={() => openPermDialog(row)}>
+                    <EditOutlinedIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </Tooltip>
               )}
               {canDelete && !row.isSystem && (
-                <Button size="small" variant="outlined" color="error" aria-label={`Delete ${row.name}`} onClick={() => void handleDelete(row)}>
-                  <DeleteOutlineIcon fontSize="small" />
-                </Button>
+                <Tooltip title={t("deleteAria", { name: row.name })}>
+                  <IconButton size="small" color="error" aria-label={t("deleteAria", { name: row.name })} onClick={() => void handleDelete(row)}>
+                    <DeleteOutlineIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </Tooltip>
               )}
             </Stack>
           )}
           actions={
             canCreate ? (
-              <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>New role</Button>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>{t("newRole")}</Button>
             ) : undefined
           }
         />
@@ -178,9 +186,9 @@ export default function RolesPage() {
             <DialogTitle sx={{ fontWeight: 700, color: "#0f172a" }}>
               {editingRole.name}
               <Typography sx={{ fontSize: 13, color: "#94a3b8", fontWeight: 400, mt: 0.5, display: "flex", alignItems: "center", gap: 1 }}>
-                {editingRole.permissions.length} permissions
+                {t("permissionsCount", { count: editingRole.permissions.length })}
                 {editingRole.isSystem && (
-                  <Chip label="System" size="small" sx={{ bgcolor: "#f1f5f9", color: "#475569", fontWeight: 700, fontSize: 11 }} />
+                  <Chip label={t("system")} size="small" sx={{ bgcolor: "#f1f5f9", color: "#475569", fontWeight: 700, fontSize: 11 }} />
                 )}
               </Typography>
             </DialogTitle>
@@ -189,8 +197,8 @@ export default function RolesPage() {
             </DialogContent>
             {!permDialogReadOnly && canWrite && (
               <DialogActions sx={{ px: 3, py: 2 }}>
-                <Button onClick={closePermDialog} sx={{ color: "#64748b" }}>Cancel</Button>
-                <Button variant="contained" onClick={() => void handleSavePerms()}>Save</Button>
+                <Button onClick={closePermDialog} sx={{ color: "#64748b" }}>{t("cancel")}</Button>
+                <Button variant="contained" onClick={() => void handleSavePerms()}>{t("save")}</Button>
               </DialogActions>
             )}
           </Dialog>
@@ -198,12 +206,12 @@ export default function RolesPage() {
 
         <FormDialog
           open={createOpen}
-          title="New role"
+          title={t("newRole")}
           maxWidth="md"
-          fields={[{ name: "name", label: "Name", required: true }]}
+          fields={[{ name: "name", label: t("name"), required: true }]}
           onSubmit={handleCreate}
           onClose={() => setCreateOpen(false)}
-          submitLabel="Create role"
+          submitLabel={t("createRole")}
         >
           <PermissionPicker value={perms} onChange={setPerms} />
         </FormDialog>

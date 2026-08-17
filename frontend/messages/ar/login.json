@@ -1,0 +1,18 @@
+{
+  "appName": "ERP Suite",
+  "signInToWorkspace": "سجّل الدخول إلى مساحة عملك",
+  "adminCredentialsHint": "استخدم البريد الإلكتروني وكلمة المرور اللذين منحهما لك المسؤول",
+  "email": "البريد الإلكتروني",
+  "password": "كلمة المرور",
+  "togglePasswordVisibility": "إظهار كلمة المرور أو إخفاؤها",
+  "twoFactorCode": "رمز التحقق الثنائي (إن كان مفعّلاً)",
+  "signIn": "تسجيل الدخول",
+  "secureWorkspace": "مساحة عمل آمنة",
+  "badgeJwt": "مصادقة JWT",
+  "badgeRbac": "التحكم بالوصول RBAC",
+  "badgeAudit": "سجل التدقيق",
+  "footer": "© {year} ERP Suite — إدارة مؤسسية آمنة",
+  "welcomeBack": "مرحباً بعودتك، {name}",
+  "loginError": "{message}",
+  "somethingWentWrong": "حدث خطأ ما"
+}

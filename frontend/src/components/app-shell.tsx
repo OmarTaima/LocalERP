@@ -39,59 +39,62 @@ import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import { useTranslations } from "next-intl";
+import LanguageIcon from "@mui/icons-material/Language";
 import { useAuth } from "@/lib/auth";
 import { assetUrl } from "@/lib/api";
+import { useAppLocale } from "@/lib/locale";
 import { confirmAction, toastSuccess } from "@/components/ui";
 
 export const DRAWER_WIDTH = 264;
 
-type NavItem = { label: string; icon: ReactNode; path: string };
-type NavGroup = { label: string; items: NavItem[] };
+type NavItem = { labelKey: string; icon: ReactNode; path: string };
+type NavGroup = { labelKey: string; items: NavItem[] };
 
 export const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Overview",
-    items: [{ label: "Dashboard", icon: <DashboardOutlinedIcon />, path: "/" }],
+    labelKey: "overview",
+    items: [{ labelKey: "dashboard", icon: <DashboardOutlinedIcon />, path: "/" }],
   },
   {
-    label: "Operations",
+    labelKey: "operations",
     items: [
-      { label: "Sales & Orders", icon: <ReceiptLongOutlinedIcon />, path: "/sales" },
-      { label: "Catalog", icon: <CategoryOutlinedIcon />, path: "/catalog" },
-      { label: "Inventory", icon: <Inventory2OutlinedIcon />, path: "/inventory" },
-      { label: "Purchasing", icon: <LocalShippingOutlinedIcon />, path: "/purchasing" },
-      { label: "Manufacturing", icon: <PrecisionManufacturingOutlinedIcon />, path: "/manufacturing" },
+      { labelKey: "salesOrders", icon: <ReceiptLongOutlinedIcon />, path: "/sales" },
+      { labelKey: "catalog", icon: <CategoryOutlinedIcon />, path: "/catalog" },
+      { labelKey: "inventory", icon: <Inventory2OutlinedIcon />, path: "/inventory" },
+      { labelKey: "purchasing", icon: <LocalShippingOutlinedIcon />, path: "/purchasing" },
+      { labelKey: "manufacturing", icon: <PrecisionManufacturingOutlinedIcon />, path: "/manufacturing" },
     ],
   },
   {
-    label: "Finance",
-    items: [{ label: "Accounting", icon: <AccountBalanceOutlinedIcon />, path: "/finance" }],
+    labelKey: "finance",
+    items: [{ labelKey: "accounting", icon: <AccountBalanceOutlinedIcon />, path: "/finance" }],
   },
   {
-    label: "Organization",
-    items: [{ label: "Human Resources", icon: <BadgeOutlinedIcon />, path: "/hr" }],
+    labelKey: "organization",
+    items: [{ labelKey: "humanResources", icon: <BadgeOutlinedIcon />, path: "/hr" }],
   },
   {
-    label: "System",
-    items: [{ label: "Settings", icon: <SettingsOutlinedIcon />, path: "/settings" }],
+    labelKey: "system",
+    items: [{ labelKey: "settings", icon: <SettingsOutlinedIcon />, path: "/settings" }],
   },
 ];
 
 export const ADMIN_NAV_GROUP: NavGroup = {
-  label: "Admin",
+  labelKey: "admin",
   items: [
-    { label: "Users", icon: <PeopleOutlineIcon />, path: "/users" },
-    { label: "Roles", icon: <AdminPanelSettingsOutlinedIcon />, path: "/roles" },
+    { labelKey: "users", icon: <PeopleOutlineIcon />, path: "/users" },
+    { labelKey: "roles", icon: <AdminPanelSettingsOutlinedIcon />, path: "/roles" },
   ],
 };
 
 export const PLATFORM_NAV_GROUPS: NavGroup[] = [
   {
-    label: "Platform",
+    labelKey: "platform",
     items: [
-      { label: "Companies", icon: <BusinessOutlinedIcon />, path: "/companies" },
-      { label: "Users", icon: <PeopleOutlineIcon />, path: "/platform/users" },
-      { label: "Roles & Permissions", icon: <AdminPanelSettingsOutlinedIcon />, path: "/platform/roles" },
+      { labelKey: "companies", icon: <BusinessOutlinedIcon />, path: "/companies" },
+      { labelKey: "users", icon: <PeopleOutlineIcon />, path: "/platform/users" },
+      { labelKey: "rolesPermissions", icon: <AdminPanelSettingsOutlinedIcon />, path: "/platform/roles" },
     ],
   },
 ];
@@ -108,9 +111,12 @@ const itemVariants = {
 
 export function AppShell({ children, topbar }: { children: ReactNode; topbar?: ReactNode }) {
   const theme = useTheme();
+  const { direction } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading, logout } = useAuth();
+  const { locale, setLocale } = useAppLocale();
+  const t = useTranslations("common");
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenu, setUserMenu] = useState<null | HTMLElement>(null);
@@ -122,20 +128,20 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
   const navGroups = isSuperadmin
     ? PLATFORM_NAV_GROUPS
     : canAdmin
-      ? NAV_GROUPS.flatMap((group) => (group.label === "System" ? [ADMIN_NAV_GROUP, group] : [group]))
+      ? NAV_GROUPS.flatMap((group) => (group.labelKey === "system" ? [ADMIN_NAV_GROUP, group] : [group]))
       : NAV_GROUPS;
 
   const handleLogout = async () => {
     const ok = await confirmAction({
-      title: "Sign out?",
-      text: "You will need to sign in again to continue.",
-      confirmText: "Sign out",
-      cancelText: "Cancel",
+      title: t("signOutTitle"),
+      text: t("signOutText"),
+      confirmText: t("signOut"),
+      cancelText: t("cancel"),
       icon: "question",
     });
     if (!ok) return;
     await logout();
-    toastSuccess("Signed out");
+    toastSuccess(t("signedOut"));
     router.replace("/login");
   };
 
@@ -168,16 +174,16 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
           E
         </Box>
         <Box>
-          <Typography sx={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, color: "#fff" }}>ERP Suite</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, color: "#fff" }}>{t("brand")}</Typography>
           <Typography sx={{ fontSize: 11, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-            Enterprise Management
+            {t("brandSubtitle")}
           </Typography>
         </Box>
       </Stack>
       <Divider sx={{ borderColor: "rgba(148,163,184,0.15)" }} />
       <Box sx={{ flex: 1, overflowY: "auto", px: 1.5, py: 1.5, scrollbarWidth: "none", "&::-webkit-scrollbar": { display: "none" } }}>
         {navGroups.map((group) => (
-          <Box key={group.label} sx={{ mb: 1.5 }}>
+          <Box key={group.labelKey} sx={{ mb: 1.5 }}>
             <Typography
               sx={{
                 px: 1.5,
@@ -189,13 +195,13 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
                 color: "#475569",
               }}
             >
-              {group.label}
+              {t(`nav.${group.labelKey}`)}
             </Typography>
             {group.items.map((item) => {
               const active = pathname === item.path;
               return (
                 <ListItemButton
-                  key={item.label}
+                  key={item.labelKey}
                   selected={active}
                   onClick={() => {
                     router.push(item.path);
@@ -214,7 +220,7 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 38, color: "inherit" }}>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.label} slotProps={{ primary: { fontSize: 13.5, fontWeight: active ? 600 : 500 } }} />
+                  <ListItemText primary={t(`nav.${item.labelKey}`)} slotProps={{ primary: { fontSize: 13.5, fontWeight: active ? 600 : 500 } }} />
                   {active && <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: "#818cf8" }} />}
                 </ListItemButton>
               );
@@ -231,7 +237,7 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
           {(user?.name ?? "U").slice(0, 2).toUpperCase()}
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#fff" }} noWrap>{user?.name ?? "Loading…"}</Typography>
+          <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#fff" }} noWrap>{user?.name ?? t("loading")}</Typography>
           <Typography sx={{ fontSize: 11.5, color: "#64748b" }} noWrap>{user?.email ?? ""}</Typography>
         </Box>
       </Stack>
@@ -276,9 +282,13 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
       <AppBar
         position="fixed"
         elevation={0}
+        style={
+          direction === "rtl"
+            ? { marginRight: isDesktop ? `${DRAWER_WIDTH}px` : 0, right: 0, left: "auto" }
+            : { marginLeft: isDesktop ? `${DRAWER_WIDTH}px` : 0, left: 0, right: "auto" }
+        }
         sx={{
           width: isDesktop ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%",
-          ml: isDesktop ? `${DRAWER_WIDTH}px` : 0,
           bgcolor: "rgba(255,255,255,0.9)",
           backdropFilter: "blur(10px)",
           borderBottom: "1px solid #e2e8f0",
@@ -306,13 +316,25 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
               }}
             >
               <SearchIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
-              <InputBase placeholder="Search orders, products, employees…" sx={{ fontSize: 13.5, flex: 1 }} />
+              <InputBase placeholder={t("searchPlaceholder")} sx={{ fontSize: 13.5, flex: 1 }} />
             </Box>
           )}
           <Box sx={{ flex: 1 }} />
           {topbar}
+          <Tooltip title={t("lang.label")}>
+            <IconButton
+              onClick={() => setLocale(locale === "ar" ? "en" : "ar")}
+              aria-label={t("lang.label")}
+              sx={{ gap: 0.5, fontSize: 11.5, fontWeight: 700, textTransform: "uppercase" }}
+            >
+              <LanguageIcon sx={{ fontSize: 20 }} />
+              <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                {t("lang.switchTo")}
+              </Box>
+            </IconButton>
+          </Tooltip>
           {!isSuperadmin && (
-            <Tooltip title="Notifications">
+            <Tooltip title={t("notifications")}>
               <IconButton>
                 <Badge badgeContent={0} color="primary">
                   <NotificationsNoneIcon />
@@ -320,10 +342,10 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
               </IconButton>
             </Tooltip>
           )}
-          <Tooltip title="Account">
+          <Tooltip title={t("account")}>
             <IconButton
               onClick={(event) => setUserMenu(event.currentTarget)}
-              sx={{ p: 0.25, ml: 0.5 }}
+              sx={{ p: 0.25, marginInlineStart: 0.5 }}
             >
               <Avatar
                 src={user?.kind === "company" ? assetUrl(user.avatarUrl) : undefined}
@@ -337,32 +359,33 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
             anchorEl={userMenu}
             open={Boolean(userMenu)}
             onClose={() => setUserMenu(null)}
-            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-            transformOrigin={{ vertical: "top", horizontal: "right" }}
+            anchorOrigin={{ vertical: "bottom", horizontal: direction === "rtl" ? "left" : "right" }}
+            transformOrigin={{ vertical: "top", horizontal: direction === "rtl" ? "left" : "right" }}
           >
-            <MenuItem sx={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>Signed in as {user?.email}</MenuItem>
+            <MenuItem sx={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>{t("signedInAs", { email: user?.email ?? "" })}</MenuItem>
             <Divider />
             {!isSuperadmin && (
               <MenuItem sx={{ fontSize: 13.5, color: "#0f172a" }} onClick={() => router.push("/profile")}>
-                <AccountCircleOutlinedIcon sx={{ fontSize: 18, mr: 1.25 }} /> Profile
+                <AccountCircleOutlinedIcon sx={{ fontSize: 18, marginInlineEnd: 1.25 }} /> {t("profile")}
               </MenuItem>
             )}
             <Divider />
             <MenuItem sx={{ fontSize: 13.5, color: "#dc2626" }} onClick={() => void handleLogout()}>
-              <LogoutRoundedIcon sx={{ fontSize: 18, mr: 1.25 }} /> Sign out
+              <LogoutRoundedIcon sx={{ fontSize: 18, marginInlineEnd: 1.25 }} /> {t("signOut")}
             </MenuItem>
           </Menu>
         </Toolbar>
       </AppBar>
 
       <Drawer
+        anchor={direction === "rtl" ? "right" : "left"}
         variant={isDesktop ? "permanent" : "temporary"}
         open={isDesktop ? true : mobileOpen}
         onClose={() => setMobileOpen(false)}
         sx={{
           width: DRAWER_WIDTH,
           flexShrink: 0,
-          "& .MuiDrawer-paper": { width: DRAWER_WIDTH, borderRight: "none" },
+          "& .MuiDrawer-paper": { width: DRAWER_WIDTH, borderInlineEnd: "none" },
         }}
       >
         {sidebar}

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import type { Paginated, Product } from "@erp/shared";
 import { AppError } from "../utils/errors";
 import { writeAudit, diff } from "./audit.service";
@@ -9,6 +10,7 @@ import {
   PriceListItemModel,
   TaxRuleModel,
   ReorderRuleModel,
+  InventoryModel,
   type CategoryDoc,
 } from "../models";
 import { serializeCategory, serializeProduct } from "../utils/serializers";
@@ -119,7 +121,9 @@ export type ProductListQuery = {
 
 const PRODUCT_SORT_WHITELIST = ["name", "sku", "price", "cost", "createdAt"];
 
-export async function listProducts(companyId: string, query: ProductListQuery): Promise<Paginated<Product>> {
+type ProductWithStock = Product & { stock: number };
+
+export async function listProducts(companyId: string, query: ProductListQuery): Promise<Paginated<ProductWithStock>> {
   const page = Math.max(1, query.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
   const filter: Record<string, unknown> = { companyId };
@@ -143,7 +147,25 @@ export async function listProducts(companyId: string, query: ProductListQuery): 
       .lean(),
     ProductModel.countDocuments(filter),
   ]);
-  return { items: docs.map(serializeProduct), total, page, pageSize };
+  const stockById = new Map<string, number>(
+    (
+      await InventoryModel.aggregate<{ _id: mongoose.Types.ObjectId; stock: number }>([
+        {
+          $match: {
+            companyId: new mongoose.Types.ObjectId(companyId),
+            productId: { $in: docs.map((doc) => doc._id) },
+          },
+        },
+        { $group: { _id: "$productId", stock: { $sum: "$quantity" } } },
+      ])
+    ).map((row): [string, number] => [row._id.toString(), row.stock]),
+  );
+  return {
+    items: docs.map((doc) => ({ ...serializeProduct(doc), stock: stockById.get(doc._id.toString()) ?? 0 })),
+    total,
+    page,
+    pageSize,
+  };
 }
 
 export async function getProduct(companyId: string, productId: string) {

@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
+import MoveToInboxOutlinedIcon from "@mui/icons-material/MoveToInboxOutlined";
 import { AppShell, itemVariants } from "@/components/app-shell";
 import { PageHeader, StatusChip, toastSuccess, toastError, confirmAction } from "@/components/ui";
 import { DataTable } from "@/components/data-table";
@@ -20,6 +24,7 @@ type Transfer = { id: string; referenceNumber: string; fromWarehouseId: string; 
 type LowStockItem = { productId: string; sku: string; name: string; quantity: number; threshold: number };
 
 function WarehousesTab() {
+  const t = useTranslations("inventory");
   const { rows, loading, refresh } = useSimpleList<Warehouse>("/warehouses");
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -27,69 +32,71 @@ function WarehousesTab() {
     <>
       <DataTable
         columns={[
-          { label: "Name", render: (row) => <Typography sx={{ fontWeight: 600, color: "#0f172a" }}>{row.name}</Typography> },
-          { label: "Default", render: (row) => (row.isDefault ? <StatusChip status="active" /> : "—") },
-          { label: "Status", render: (row) => <StatusChip status={row.isActive ? "active" : "inactive"} /> },
+          { label: t("name"), render: (row) => <Typography sx={{ fontWeight: 600, color: "#0f172a" }}>{row.name}</Typography> },
+          { label: t("default"), render: (row) => (row.isDefault ? <StatusChip status="active" /> : "—") },
+          { label: t("status"), render: (row) => <StatusChip status={row.isActive ? "active" : "inactive"} /> },
         ]}
         rows={rows}
         total={rows.length}
         page={1}
         onPageChange={() => undefined}
         loading={loading}
-        emptyTitle="No warehouses"
-        emptySubtitle="Create a warehouse to hold stock"
+        emptyTitle={t("emptyWarehousesTitle")}
+        emptySubtitle={t("emptyWarehousesSubtitle")}
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>New warehouse</Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>{t("newWarehouse")}</Button>
         }
       />
       <FormDialog
         open={createOpen}
-        title="New warehouse"
+        title={t("newWarehouse")}
         fields={[
-          { name: "name", label: "Name", required: true },
-          { name: "address", label: "Address" },
+          { name: "name", label: t("name"), required: true },
+          { name: "address", label: t("address") },
         ]}
         onSubmit={async (values) => {
           try {
             await api("/warehouses", { method: "POST", body: { name: values.name, address: String(values.address ?? "") } });
-            toastSuccess("Warehouse created");
+            toastSuccess(t("toastWarehouseCreated"));
             setCreateOpen(false);
             refresh();
           } catch (err) {
-            toastError(err instanceof Error ? err.message : "failed to create warehouse");
+            toastError(err instanceof Error ? err.message : t("errCreateWarehouse"));
           }
         }}
         onClose={() => setCreateOpen(false)}
-        submitLabel="Create"
+        submitLabel={t("create")}
       />
     </>
   );
 }
 
 function BatchesTab() {
+  const t = useTranslations("inventory");
   const { rows, loading } = useSimpleList<Batch>("/batches");
 
   return (
     <DataTable
       columns={[
-        { label: "Lot", render: (row) => <Typography sx={{ fontWeight: 600, color: "#0f172a" }}>{row.lotNumber}</Typography> },
-        { label: "Product", render: (row) => `#${row.productId.slice(-6)}` },
-        { label: "Quantity", render: (row) => <Typography sx={{ fontWeight: 600 }}>{row.quantity}</Typography> },
-        { label: "Expiry", render: (row) => dateShort(row.expiryDate) },
-        { label: "Received", render: (row) => dateShort(row.receivedAt) },
+        { label: t("lot"), render: (row) => <Typography sx={{ fontWeight: 600, color: "#0f172a" }}>{row.lotNumber}</Typography> },
+        { label: t("product"), render: (row) => `#${row.productId.slice(-6)}` },
+        { label: t("quantity"), render: (row) => <Typography sx={{ fontWeight: 600 }}>{row.quantity}</Typography> },
+        { label: t("expiry"), render: (row) => dateShort(row.expiryDate) },
+        { label: t("received"), render: (row) => dateShort(row.receivedAt) },
       ]}
       rows={rows}
       total={rows.length}
       page={1}
       onPageChange={() => undefined}
       loading={loading}
-      emptyTitle="No batches"
-      emptySubtitle="Batches are created by GRNs, transfers, and work orders"
+      emptyTitle={t("emptyBatchesTitle")}
+      emptySubtitle={t("emptyBatchesSubtitle")}
     />
   );
 }
 
 function TransfersTab() {
+  const t = useTranslations("inventory");
   const { rows, total, page, setPage, loading, refresh } = useList<Transfer>("/warehouses/transfers");
   const [createOpen, setCreateOpen] = useState(false);
   const [lines, setLines] = useState<Record<string, string | number>[]>([]);
@@ -104,19 +111,19 @@ function TransfersTab() {
       setLines([]);
       setCreateOpen(true);
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "failed to load reference data");
+      toastError(err instanceof Error ? err.message : t("errLoadReferenceData"));
     }
   };
 
   const receive = async (transfer: Transfer) => {
-    const ok = await confirmAction({ title: `Receive ${transfer.referenceNumber}?`, text: "Stock is added to the destination warehouse.", confirmText: "Receive" });
+    const ok = await confirmAction({ title: t("receiveTitle", { referenceNumber: transfer.referenceNumber }), text: t("receiveText"), confirmText: t("receive") });
     if (!ok) return;
     try {
       await api(`/warehouses/transfers/${transfer.id}/receive`, { method: "POST" });
-      toastSuccess("Transfer received");
+      toastSuccess(t("toastTransferReceived"));
       refresh();
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "failed to receive transfer");
+      toastError(err instanceof Error ? err.message : t("errReceiveTransfer"));
     }
   };
 
@@ -124,32 +131,38 @@ function TransfersTab() {
     <>
       <DataTable
         columns={[
-          { label: "Reference", render: (row) => <Typography sx={{ fontWeight: 600, color: "#4f46e5" }}>{row.referenceNumber}</Typography> },
-          { label: "From", render: (row) => `#${row.fromWarehouseId.slice(-6)}` },
-          { label: "To", render: (row) => `#${row.toWarehouseId.slice(-6)}` },
-          { label: "Status", render: (row) => <StatusChip status={row.status} /> },
-          { label: "Created", render: (row) => dateShort(row.createdAt) },
+          { label: t("reference"), render: (row) => <Typography sx={{ fontWeight: 600, color: "#4f46e5" }}>{row.referenceNumber}</Typography> },
+          { label: t("from"), render: (row) => `#${row.fromWarehouseId.slice(-6)}` },
+          { label: t("to"), render: (row) => `#${row.toWarehouseId.slice(-6)}` },
+          { label: t("status"), render: (row) => <StatusChip status={row.status} /> },
+          { label: t("created"), render: (row) => dateShort(row.createdAt) },
         ]}
         rows={rows}
         total={total}
         page={page}
         onPageChange={setPage}
         loading={loading}
-        emptyTitle="No transfers"
-        emptySubtitle="Move stock between warehouses"
+        emptyTitle={t("emptyTransfersTitle")}
+        emptySubtitle={t("emptyTransfersSubtitle")}
         actions={
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => void openCreate()}>New transfer</Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => void openCreate()}>{t("newTransfer")}</Button>
         }
         rowActions={(row) =>
-          row.status === "in-transit" ? <Button size="small" variant="outlined" onClick={() => void receive(row)}>Receive</Button> : null
+          row.status === "in-transit" ? (
+            <Tooltip title={t("receive")}>
+              <IconButton size="small" color="primary" aria-label={t("receive")} onClick={() => void receive(row)}>
+                <MoveToInboxOutlinedIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+          ) : null
         }
       />
       <FormDialog
         open={createOpen}
-        title="New transfer"
+        title={t("newTransfer")}
         fields={[
-          { name: "fromWarehouseId", label: "From warehouse", type: "select", required: true, options: warehouses.map((w) => ({ value: w.id, label: w.name })) },
-          { name: "toWarehouseId", label: "To warehouse", type: "select", required: true, options: warehouses.map((w) => ({ value: w.id, label: w.name })) },
+          { name: "fromWarehouseId", label: t("fromWarehouse"), type: "select", required: true, options: warehouses.map((w) => ({ value: w.id, label: w.name })) },
+          { name: "toWarehouseId", label: t("toWarehouse"), type: "select", required: true, options: warehouses.map((w) => ({ value: w.id, label: w.name })) },
         ]}
         onSubmit={async (values) => {
           try {
@@ -161,22 +174,22 @@ function TransfersTab() {
                 items: lines.map((line) => ({ productId: line.productId, quantity: Number(line.quantity) })),
               },
             });
-            toastSuccess("Transfer created");
+            toastSuccess(t("toastTransferCreated"));
             setCreateOpen(false);
             refresh();
           } catch (err) {
-            toastError(err instanceof Error ? err.message : "failed to create transfer");
+            toastError(err instanceof Error ? err.message : t("errCreateTransfer"));
           }
         }}
         onClose={() => setCreateOpen(false)}
-        submitLabel="Create transfer"
+        submitLabel={t("createTransfer")}
       >
         <LineItemsEditor
           lines={lines}
           setLines={setLines}
           columns={[
-            { key: "productId", label: "Product", type: "select", options: products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })), required: true },
-            { key: "quantity", label: "Qty", type: "number", required: true },
+            { key: "productId", label: t("product"), type: "select", options: products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })), required: true },
+            { key: "quantity", label: t("qty"), type: "number", required: true },
           ]}
         />
       </FormDialog>
@@ -185,35 +198,37 @@ function TransfersTab() {
 }
 
 function LowStockTab() {
+  const t = useTranslations("inventory");
   const { rows, loading } = useSimpleList<LowStockItem>("/inventory/low-stock");
   const withIds = rows.map((row) => ({ ...row, id: row.productId }));
 
   return (
     <DataTable
       columns={[
-        { label: "SKU", render: (row) => <Typography sx={{ fontWeight: 600, color: "#4f46e5" }}>{row.sku}</Typography> },
-        { label: "Product", render: (row) => <Typography sx={{ fontWeight: 600 }}>{row.name}</Typography> },
-        { label: "On hand", render: (row) => row.quantity },
-        { label: "Threshold", render: (row) => row.threshold },
+        { label: t("sku"), render: (row) => <Typography sx={{ fontWeight: 600, color: "#4f46e5" }}>{row.sku}</Typography> },
+        { label: t("product"), render: (row) => <Typography sx={{ fontWeight: 600 }}>{row.name}</Typography> },
+        { label: t("onHand"), render: (row) => row.quantity },
+        { label: t("threshold"), render: (row) => row.threshold },
       ]}
       rows={withIds}
       total={withIds.length}
       page={1}
       onPageChange={() => undefined}
       loading={loading}
-      emptyTitle="All products in stock"
-      emptySubtitle="No products are below their reorder threshold"
+      emptyTitle={t("emptyLowStockTitle")}
+      emptySubtitle={t("emptyLowStockSubtitle")}
     />
   );
 }
 
 export default function InventoryPage() {
+  const t = useTranslations("inventory");
   const [tab, setTab] = useState(0);
 
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Inventory" subtitle="Track stock in your warehouses and move items between them." />
+        <PageHeader title={t("pageTitle")} subtitle={t("pageSubtitle")} />
         <Tabs
           value={tab}
           onChange={(_, value) => setTab(value)}
@@ -222,10 +237,10 @@ export default function InventoryPage() {
           allowScrollButtonsMobile
           sx={{ mb: 3, "& .MuiTab-root": { textTransform: "none", fontWeight: 600, fontSize: 13.5 } }}
         >
-          <Tab label="Warehouses" />
-          <Tab label="Batches" />
-          <Tab label="Transfers" />
-          <Tab label="Low stock" />
+          <Tab label={t("tabWarehouses")} />
+          <Tab label={t("tabBatches")} />
+          <Tab label={t("tabTransfers")} />
+          <Tab label={t("tabLowStock")} />
         </Tabs>
       </motion.div>
       {tab === 0 && <WarehousesTab />}

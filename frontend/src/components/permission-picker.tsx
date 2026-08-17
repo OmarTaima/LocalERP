@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Checkbox from "@mui/material/Checkbox";
@@ -52,6 +53,7 @@ export function PermissionPicker({
   onChange: (next: string[]) => void;
   disabled?: boolean;
 }) {
+  const t = useTranslations("common");
   const selected = useMemo(() => new Set(value), [value]);
 
   const emit = (next: string[]) => onChange(sortPermissions(next));
@@ -86,7 +88,7 @@ export function PermissionPicker({
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
               <FormControlLabel
                 control={<Checkbox checked={allChecked} indeterminate={someChecked} onChange={() => toggleModule(module)} disabled={disabled} />}
-                label={<Typography sx={{ fontWeight: 700, fontSize: 13.5, color: "#0f172a", textTransform: "capitalize" }}>{module}</Typography>}
+                label={<Typography sx={{ fontWeight: 700, fontSize: 13.5, color: "#0f172a", textTransform: "capitalize" }}>{t(`permModules.${module}`)}</Typography>}
               />
               <Typography sx={{ fontSize: 12, color: "#94a3b8", fontWeight: 600 }}>
                 {checkedCount} of {codes.length}
@@ -97,7 +99,7 @@ export function PermissionPicker({
                 <FormControlLabel
                   key={code}
                   control={<Checkbox size="small" checked={selected.has(code)} onChange={() => toggle(code)} disabled={disabled} />}
-                  label={<Typography sx={{ fontSize: 12.5, color: "#334155" }}>{code.split(":")[1]}</Typography>}
+                  label={<Typography sx={{ fontSize: 12.5, color: "#334155" }}>{t(`permAccessLevels.${code.split(":")[1]}`)}</Typography>}
                 />
               ))}
             </Box>

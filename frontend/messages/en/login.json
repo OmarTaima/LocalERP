@@ -1,0 +1,18 @@
+{
+  "appName": "ERP Suite",
+  "signInToWorkspace": "Sign in to your workspace",
+  "adminCredentialsHint": "Use the email and password your administrator gave you",
+  "email": "Email address",
+  "password": "Password",
+  "togglePasswordVisibility": "Toggle password visibility",
+  "twoFactorCode": "Two-factor code (if enabled)",
+  "signIn": "Sign in",
+  "secureWorkspace": "SECURE WORKSPACE",
+  "badgeJwt": "JWT Auth",
+  "badgeRbac": "RBAC",
+  "badgeAudit": "Audit Trail",
+  "footer": "© {year} ERP Suite — secure enterprise management",
+  "welcomeBack": "Welcome back, {name}",
+  "loginError": "{message}",
+  "somethingWentWrong": "Something went wrong"
+}

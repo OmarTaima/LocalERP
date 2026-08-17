@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@erp/shared": "*",
@@ -16,6 +17,7 @@
     "@mui/material": "^6.4.0",
     "framer-motion": "^11.18.2",
     "next": "^15.1.6",
+    "next-intl": "^4.13.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sweetalert2": "^11.17.2"

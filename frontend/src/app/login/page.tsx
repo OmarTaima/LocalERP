@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
@@ -29,6 +30,7 @@ const fadeUp = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations("login");
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -45,10 +47,10 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const user = await login(form.email, form.password, form.totpCode || undefined);
-      toastSuccess(`Welcome back, ${user.name.split(" ")[0]}`);
+      toastSuccess(t("welcomeBack", { name: user.name.split(" ")[0] }));
       router.replace("/");
     } catch (error) {
-      toastError(error instanceof ApiError ? error.message : "Something went wrong");
+      toastError(error instanceof ApiError ? t("loginError", { message: error.message }) : t("somethingWentWrong"));
     } finally {
       setSubmitting(false);
     }
@@ -74,8 +76,8 @@ export default function LoginPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, transition: { duration: 1.2 } }}
       >
-        <Box sx={{ position: "absolute", width: 420, height: 420, borderRadius: "50%", top: -140, right: -120, background: "radial-gradient(circle, rgba(79,70,229,0.35) 0%, transparent 70%)" }} />
-        <Box sx={{ position: "absolute", width: 520, height: 520, borderRadius: "50%", bottom: -220, left: -180, background: "radial-gradient(circle, rgba(124,58,237,0.3) 0%, transparent 70%)" }} />
+        <Box sx={{ position: "absolute", width: 420, height: 420, borderRadius: "50%", top: -140, insetInlineEnd: -120, background: "radial-gradient(circle, rgba(79,70,229,0.35) 0%, transparent 70%)" }} />
+        <Box sx={{ position: "absolute", width: 520, height: 520, borderRadius: "50%", bottom: -220, insetInlineStart: -180, background: "radial-gradient(circle, rgba(124,58,237,0.3) 0%, transparent 70%)" }} />
       </motion.div>
 
       <motion.div variants={fadeUp} initial="hidden" animate="show" style={{ width: "100%", maxWidth: 460, position: "relative", zIndex: 1 }}>
@@ -98,12 +100,12 @@ export default function LoginPage() {
           >
             E
           </Box>
-          <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: 22 }}>ERP Suite</Typography>
+          <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: 22 }}>{t("appName")}</Typography>
           <Typography sx={{ color: "#94a3b8", fontSize: 13.5, mt: 0.5 }}>
-            Sign in to your workspace
+            {t("signInToWorkspace")}
           </Typography>
           <Typography sx={{ color: "#64748b", fontSize: 12, mt: 0.5 }}>
-            Use the email and password your administrator gave you
+            {t("adminCredentialsHint")}
           </Typography>
         </Stack>
 
@@ -112,7 +114,7 @@ export default function LoginPage() {
 
           <Stack spacing={2.25}>
             <TextField
-              label="Email address"
+              label={t("email")}
               type="email"
               value={form.email}
               onChange={set("email")}
@@ -121,7 +123,7 @@ export default function LoginPage() {
               slotProps={{ input: { startAdornment: <InputAdornment position="start"><EmailOutlinedIcon sx={{ fontSize: 19, color: "#94a3b8" }} /></InputAdornment> } }}
             />
             <TextField
-              label="Password"
+              label={t("password")}
               type={showPassword ? "text" : "password"}
               value={form.password}
               onChange={set("password")}
@@ -132,7 +134,7 @@ export default function LoginPage() {
                   startAdornment: <InputAdornment position="start"><LockOutlinedIcon sx={{ fontSize: 19, color: "#94a3b8" }} /></InputAdornment>,
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton edge="end" onClick={() => setShowPassword((value) => !value)} aria-label="Toggle password visibility">
+                      <IconButton edge="end" onClick={() => setShowPassword((value) => !value)} aria-label={t("togglePasswordVisibility")}>
                         {showPassword ? <VisibilityOff sx={{ fontSize: 19 }} /> : <Visibility sx={{ fontSize: 19 }} />}
                       </IconButton>
                     </InputAdornment>
@@ -141,7 +143,7 @@ export default function LoginPage() {
               }}
             />
             <TextField
-              label="Two-factor code (if enabled)"
+              label={t("twoFactorCode")}
               value={form.totpCode}
               onChange={set("totpCode")}
               size="small"
@@ -154,15 +156,15 @@ export default function LoginPage() {
               onClick={() => void handleSubmit()}
               sx={{ borderRadius: 2.5, textTransform: "none", fontWeight: 700, fontSize: 15, py: 1.4 }}
             >
-              Sign in
+              {t("signIn")}
             </Button>
           </Stack>
 
           <Divider sx={{ my: 3, borderColor: "#e2e8f0" }}>
-            <Typography sx={{ fontSize: 11.5, color: "#94a3b8", px: 1 }}>SECURE WORKSPACE</Typography>
+            <Typography sx={{ fontSize: 11.5, color: "#94a3b8", px: 1 }}>{t("secureWorkspace")}</Typography>
           </Divider>
           <Stack direction="row" spacing={2} justifyContent="center">
-            {["JWT Auth", "RBAC", "Audit Trail"].map((badge) => (
+            {[t("badgeJwt"), t("badgeRbac"), t("badgeAudit")].map((badge) => (
               <Box key={badge} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
                 <Avatar sx={{ width: 14, height: 14, bgcolor: "#059669", fontSize: 9 }}>✓</Avatar>
                 <Typography sx={{ fontSize: 11.5, color: "#64748b", fontWeight: 600 }}>{badge}</Typography>
@@ -172,7 +174,7 @@ export default function LoginPage() {
         </Paper>
 
         <Typography sx={{ textAlign: "center", color: "#475569", fontSize: 12, mt: 3 }}>
-          © {new Date().getFullYear()} ERP Suite — secure enterprise management
+          {t("footer", { year: new Date().getFullYear() })}
         </Typography>
       </motion.div>
     </Box>
