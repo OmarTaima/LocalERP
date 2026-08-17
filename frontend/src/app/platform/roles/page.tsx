@@ -179,7 +179,7 @@ export default function PlatformRolesPage() {
           value={companyId}
           onChange={(e) => setCompanyId(e.target.value)}
           sx={{ mb: 2, width: { xs: "100%", sm: 320 } }}
-          slotProps={{ select: { displayEmpty: true } }}
+          slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
         >
           <MenuItem value="" disabled>Select a workspace…</MenuItem>
           {companies.map((company) => (

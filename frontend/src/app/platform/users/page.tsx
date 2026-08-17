@@ -284,7 +284,7 @@ export default function PlatformUsersPage() {
             value={companyFilter}
             onChange={(e) => setCompanyFilter(e.target.value)}
             sx={{ width: 220 }}
-            slotProps={{ select: { displayEmpty: true } }}
+            slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
           >
             <MenuItem value="">All companies</MenuItem>
             {companyOptions.map((option) => (

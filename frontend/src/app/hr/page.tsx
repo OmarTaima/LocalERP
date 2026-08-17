@@ -139,7 +139,7 @@ function EmployeesTab() {
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           sx={{ width: 160 }}
-          slotProps={{ select: { displayEmpty: true } }}
+          slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
         >
           <MenuItem value="">All</MenuItem>
           {EMPLOYEE_STATUSES.map((s) => <MenuItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</MenuItem>)}
