@@ -8,10 +8,13 @@ async function run(): Promise<void> {
   await mongod.waitUntilRunning();
   process.env.NODE_ENV = "test";
   process.env.MONGO_URI = mongod.getUri("erp");
-  // Smoke must never touch real Cloudflare: pin the config vars to empty
-  // so POST /upload/direct returns 503 instead of making API calls.
-  process.env.CLOUDFLARE_ACCOUNT_ID = "";
-  process.env.CLOUDFLARE_IMAGES_TOKEN = "";
+  // Smoke must never touch real Cloudflare R2: pin the config vars to empty
+  // so POST /upload/direct returns 503 instead of presigning against the bucket.
+  process.env.R2_ACCOUNT_ID = "";
+  process.env.R2_ACCESS_KEY_ID = "";
+  process.env.R2_SECRET_ACCESS_KEY = "";
+  process.env.R2_BUCKET = "";
+  process.env.R2_PUBLIC_BASE_URL = "";
 
   const { app, connectDb } = await import("../index");
   await connectDb();
@@ -215,14 +218,14 @@ async function run(): Promise<void> {
     headers: authHeaders,
     body: JSON.stringify({ name: "demo.png", type: "image/png" }),
   });
-  expect(directUploadCompany.status === 503, "POST /upload/direct accepts company user token and 503s without Cloudflare config");
+  expect(directUploadCompany.status === 503, "POST /upload/direct accepts company user token and 503s without R2 config");
 
   const directUploadAdmin = await request("/upload/direct", {
     method: "POST",
     headers: adminHeaders,
     body: JSON.stringify({ name: "demo.png", type: "image/png", folder: "logos" }),
   });
-  expect(directUploadAdmin.status === 503, "POST /upload/direct accepts superadmin token and 503s without Cloudflare config");
+  expect(directUploadAdmin.status === 503, "POST /upload/direct accepts superadmin token and 503s without R2 config");
 
   const adminUserDelete = await request(`/admin/users/${adminUserId}`, { method: "DELETE", headers: adminHeaders });
   expect(adminUserDelete.status === 200, "DELETE /admin/users/:id soft-deactivates user");

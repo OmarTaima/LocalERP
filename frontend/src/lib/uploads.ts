@@ -17,16 +17,15 @@ async function requestUploadUrl(file: File, folder: string): Promise<DirectUploa
   });
 }
 
-function postFile(
+function putFile(
   uploadUrl: string,
   file: File,
   onProgress?: (percent: number) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const form = new FormData();
-    form.append("file", file);
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", uploadUrl);
+    xhr.open("PUT", uploadUrl);
+    xhr.setRequestHeader("Content-Type", file.type);
     xhr.timeout = UPLOAD_TIMEOUT_MS;
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && onProgress) {
@@ -39,15 +38,16 @@ function postFile(
     };
     xhr.onerror = () => reject(new Error("network error during upload"));
     xhr.ontimeout = () => reject(new Error("upload timed out"));
-    xhr.send(form);
+    xhr.send(file);
   });
 }
 
 /**
- * Uploads a file straight to Cloudflare Images.
- * Requests an upload URL via POST /upload/direct, then POSTs the file as
- * multipart/form-data (field "file") to the returned upload URL. Retries up to
- * 3 attempts with exponential backoff and resolves with the final public URL.
+ * Uploads a file straight to Cloudflare R2.
+ * Requests a presigned upload URL via POST /upload/direct, then PUTs the raw
+ * file bytes (AWS SigV4 presigned PUT, Content-Type set to the file's MIME
+ * type) to the returned upload URL. Retries up to 3 attempts with exponential
+ * backoff and resolves with the final public URL.
  */
 export async function uploadDirect(
   file: File,
@@ -58,7 +58,7 @@ export async function uploadDirect(
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
       const { uploadURL, publicUrl } = await requestUploadUrl(file, folder);
-      await postFile(uploadURL, file, onProgress);
+      await putFile(uploadURL, file, onProgress);
       return publicUrl;
     } catch (err) {
       lastDetail = err instanceof Error ? err.message : "unknown error";

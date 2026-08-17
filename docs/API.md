@@ -32,7 +32,7 @@ Auth: `Authorization: Bearer <jwt>` except public routes. Permission codes shown
 | PATCH | `/company/settings` | `companies:write` | update `name` and/or settings (`currency`, `taxRate`, `timezone`) — at least one field required |
 | POST | `/company/logo` | `companies:write` | set company logo → `{ logoUrl }` (body `{ logoUrl: https }`) |
 
-> Image uploads (avatar, logo, product photo): the browser uploads the file directly to Cloudflare Images and stores the resulting URL. Flow: `POST /upload/direct` with `{ name, type, folder? }` (any authenticated user incl. superadmin) → `{ uploadURL, publicUrl }`; the client PUTs the raw file bytes to `uploadURL` (10 min TTL); then save `publicUrl` via the endpoint above (avatar/logo) or as `image` on product create/update. Requires `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_IMAGES_TOKEN` on the backend; returns 503 `{ error }` when unconfigured.
+> Image uploads (avatar, logo, product photo): the browser uploads the file directly to Cloudflare R2 (S3-compatible, presigned URLs) and stores the resulting URL. Flow: `POST /upload/direct` with `{ name, type, folder? }` (any authenticated user incl. superadmin) → `{ uploadURL, publicUrl }`; the client PUTs the raw file bytes to `uploadURL` with the `Content-Type` header set (15 min expiry); then save `publicUrl` via the endpoint above (avatar/logo) or as `image` on product create/update. Requires `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_BASE_URL` on the backend; returns 503 `{ error }` when unconfigured.
 
 ### Platform admin (super-admin, separate JWT — no `companyId` claim)
 

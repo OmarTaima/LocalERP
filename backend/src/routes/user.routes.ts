@@ -11,7 +11,7 @@ import { AppError } from "../utils/errors";
 import { RoleModel, CompanyModel, UserModel } from "../models";
 import bcrypt from "bcryptjs";
 import { writeAudit } from "../services/audit.service";
-import { deleteImage } from "../utils/cloudflare-images";
+import { deleteImage } from "../utils/r2";
 
 export const userRouter = Router();
 

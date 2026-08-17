@@ -5,7 +5,7 @@ import { directUploadSchema } from "@erp/shared";
 import { env } from "../config/env";
 import { validate } from "../middleware/validate";
 import { asyncHandler } from "../utils/async-handler";
-import { createDirectUpload } from "../utils/cloudflare-images";
+import { presignUpload } from "../utils/r2";
 
 function requireAnyAuth(req: Request, res: Response, next: NextFunction): void {
   const header = req.header("authorization");
@@ -43,7 +43,7 @@ uploadRouter.post(
   requireAnyAuth,
   validate(directUploadSchema),
   asyncHandler(async (req, res) => {
-    const { uploadURL, publicUrl } = await createDirectUpload(req.body.name, req.body.type, {
+    const { uploadURL, publicUrl } = await presignUpload(req.body.name, req.body.type, {
       folder: req.body.folder,
     });
     res.json({ uploadURL, publicUrl });

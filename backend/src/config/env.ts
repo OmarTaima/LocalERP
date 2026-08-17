@@ -11,8 +11,11 @@ const envSchema = Joi.object({
   REFRESH_EXPIRES_IN_DAYS: Joi.number().integer().positive().default(30),
   CORS_ORIGIN: Joi.string().default("*"),
   UPLOAD_DIR: Joi.string().default("uploads"),
-  CLOUDFLARE_ACCOUNT_ID: Joi.string().allow("").default(""),
-  CLOUDFLARE_IMAGES_TOKEN: Joi.string().allow("").default(""),
+  R2_ACCOUNT_ID: Joi.string().allow("").default(""),
+  R2_ACCESS_KEY_ID: Joi.string().allow("").default(""),
+  R2_SECRET_ACCESS_KEY: Joi.string().allow("").default(""),
+  R2_BUCKET: Joi.string().allow("").default(""),
+  R2_PUBLIC_BASE_URL: Joi.string().allow("").default(""),
 });
 
 const { value, error } = envSchema.validate(process.env, { allowUnknown: true, stripUnknown: true });
@@ -30,8 +33,11 @@ type Env = {
   REFRESH_EXPIRES_IN_DAYS: number;
   CORS_ORIGIN: string;
   UPLOAD_DIR: string;
-  CLOUDFLARE_ACCOUNT_ID: string;
-  CLOUDFLARE_IMAGES_TOKEN: string;
+  R2_ACCOUNT_ID: string;
+  R2_ACCESS_KEY_ID: string;
+  R2_SECRET_ACCESS_KEY: string;
+  R2_BUCKET: string;
+  R2_PUBLIC_BASE_URL: string;
 };
 
 export const env = value as Env;

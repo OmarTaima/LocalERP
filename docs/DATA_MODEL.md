@@ -15,7 +15,7 @@ Legend: `T` = text search index, `U` = unique, `S` = sparse.
 | slug | string | unique, used in URLs |
 | plan | `starter\|pro\|enterprise` | default `starter` |
 | isActive | boolean | default true |
-| logoUrl | string | nullable; Cloudflare Images delivery URL (`imagedelivery.net`), set via `POST /company/logo` or `POST /admin/companies/:id/logo` |
+| logoUrl | string | nullable; Cloudflare R2 public delivery URL (`pub-*.r2.dev`), set via `POST /company/logo` or `POST /admin/companies/:id/logo` |
 | settings | { currency: string, taxRate: number, timezone: string } | defaults USD / 0 / UTC |
 | limits | { maxUsers, maxProducts, features[] } | enforced by `PlanLimit` |
 | createdAt / updatedAt | date | |
@@ -46,7 +46,7 @@ Not company-scoped. Authenticates via `POST /api/v1/admin/auth/login`; JWT carri
 | passwordHash | string | bcrypt, never returned |
 | name | string | required |
 | roleId | ObjectId → Role | |
-| avatarUrl | string | nullable; Cloudflare Images delivery URL — set via `POST /auth/avatar`, or `avatarUrl` on user create/update |
+| avatarUrl | string | nullable; Cloudflare R2 public delivery URL — set via `POST /auth/avatar`, or `avatarUrl` on user create/update |
 | isActive | boolean | default true |
 | lastLoginAt | date | nullable |
 | mustChangePassword | boolean | default false |
@@ -129,7 +129,7 @@ Indexes: `{ companyId, parentId }`
 | barcode | string | |
 | isActive | boolean | default true |
 | lowStockThreshold | number | default 5 |
-| images | string[] | Cloudflare Images delivery URLs; an `image` URL on create/update replaces the array (replace semantics) |
+| images | string[] | Cloudflare R2 public delivery URLs; an `image` URL on create/update replaces the array (replace semantics) |
 | variants | [{ name: string, options: string[], sku: string, price?: number, cost?: number, barcode?: string }] | optional |
 | version | number | optimistic lock |
 
