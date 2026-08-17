@@ -85,6 +85,15 @@ npm run dev:frontend # frontend → http://localhost:3000
 npm run typecheck
 ```
 
+### Seeding
+
+```bash
+npm run seed:reset --workspace backend   # DANGER: drops the whole DB, keeps only the superadmin
+npm run seed --workspace backend         # wipes + recreates the demo company (acme-demo)
+```
+
+Superadmin credentials come from `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` (defaults: `superadmin@localerp.com` / `SuperAdmin!ChangeMe2026`). Log in at `/platform` to create companies and their first admin users. There is no public signup — users are created by admins from the dashboard (Admin → Users).
+
 ## API at a glance
 
 Base URL `/api/v1` — JSON responses, errors shaped `{ "error": string }`, JWT bearer auth, company isolation enforced by middleware. Full reference in [`docs/API.md`](docs/API.md).
