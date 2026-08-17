@@ -12,6 +12,4 @@ RUN npm install --workspace=worker
 COPY shared/ ./shared/
 COPY worker/ ./worker/
 
-RUN npm run build --workspace=shared && npm run build --workspace=worker
-
-CMD ["node", "worker/dist/index.js"]
+CMD ["npx", "tsx", "worker/src/index.ts"]

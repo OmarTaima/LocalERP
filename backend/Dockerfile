@@ -12,8 +12,6 @@ RUN npm install --workspace=backend
 COPY shared/ ./shared/
 COPY backend/ ./backend/
 
-RUN npm run build --workspace=shared && npm run build --workspace=backend
-
 EXPOSE 4000
 
-CMD ["node", "backend/dist/index.js"]
+CMD ["npx", "tsx", "backend/src/index.ts"]
