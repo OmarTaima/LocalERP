@@ -5,9 +5,9 @@
     "dockerfilePath": "backend/Dockerfile"
   },
   "deploy": {
-    "startCommand": "node backend/dist/index.js",
+    "startCommand": "npx tsx backend/src/index.ts",
     "healthcheckPath": "/api/v1/health",
-    "healthcheckTimeout": 10,
+    "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
