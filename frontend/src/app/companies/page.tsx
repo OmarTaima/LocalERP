@@ -20,7 +20,6 @@ import DialogActions from "@mui/material/DialogActions";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
-import UploadIcon from "@mui/icons-material/Upload";
 import { AppShell, itemVariants } from "@/components/app-shell";
 import { PageHeader, StatusChip, toastError, toastSuccess, confirmAction } from "@/components/ui";
 import { DataTable } from "@/components/data-table";
@@ -74,7 +73,6 @@ export default function CompaniesPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<CompanyRow | null>(null);
   const [editActive, setEditActive] = useState(true);
-  const [editLogo, setEditLogo] = useState<string | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
 
   useEffect(() => {
@@ -140,14 +138,12 @@ export default function CompaniesPage() {
   const openEdit = (row: CompanyRow) => {
     setEditTarget(row);
     setEditActive(row.isActive);
-    setEditLogo(null);
     setEditOpen(true);
   };
 
   const closeEdit = () => {
     setEditOpen(false);
     setEditTarget(null);
-    setEditLogo(null);
   };
 
   const handleUpdateCompany = async (values: Record<string, string | number>) => {
@@ -165,16 +161,15 @@ export default function CompaniesPage() {
     }
   };
 
-  const handleUploadLogo = async () => {
-    if (!editTarget || !editLogo) return;
+  const handleUploadLogo = async (image: string) => {
+    if (!editTarget) return;
     setLogoUploading(true);
     try {
       const res = await api<{ logoUrl: string }>(`/admin/companies/${editTarget.id}/logo`, {
         method: "POST",
-        body: { image: editLogo },
+        body: { image },
       });
       setEditTarget({ ...editTarget, logoUrl: res.logoUrl });
-      setEditLogo(null);
       toastSuccess("Logo updated");
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to upload logo");
@@ -333,19 +328,11 @@ export default function CompaniesPage() {
           />
           <Box>
             <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a", mb: 1 }}>Logo</Typography>
-            <AvatarUpload value={editLogo ?? (assetUrl(editTarget?.logoUrl) ?? null)} onChange={setEditLogo} />
-            {editLogo && (
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<UploadIcon />}
-                disabled={logoUploading}
-                onClick={() => void handleUploadLogo()}
-                sx={{ mt: 1 }}
-              >
-                {logoUploading ? "Uploading…" : "Upload logo"}
-              </Button>
-            )}
+            <AvatarUpload
+              value={assetUrl(editTarget?.logoUrl) ?? null}
+              onChange={(dataUrl) => { if (dataUrl) void handleUploadLogo(dataUrl); }}
+              disabled={logoUploading}
+            />
           </Box>
         </Stack>
       </FormDialog>

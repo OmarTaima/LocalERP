@@ -40,6 +40,7 @@ import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 import { useAuth } from "@/lib/auth";
+import { assetUrl } from "@/lib/api";
 import { confirmAction, toastSuccess } from "@/components/ui";
 
 export const DRAWER_WIDTH = 264;
@@ -226,7 +227,10 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
       </Box>
       <Divider sx={{ borderColor: "rgba(148,163,184,0.15)" }} />
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ px: 2.5, py: 2 }}>
-        <Avatar sx={{ width: 34, height: 34, bgcolor: "#4f46e5", fontSize: 14, fontWeight: 700 }}>
+        <Avatar
+          src={user?.kind === "company" ? assetUrl(user.avatarUrl) : undefined}
+          sx={{ width: 34, height: 34, bgcolor: "#4f46e5", fontSize: 14, fontWeight: 700 }}
+        >
           {(user?.name ?? "U").slice(0, 2).toUpperCase()}
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -324,7 +328,10 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
               onClick={(event) => setUserMenu(event.currentTarget)}
               sx={{ p: 0.25, ml: 0.5 }}
             >
-              <Avatar sx={{ width: 34, height: 34, bgcolor: "#4f46e5", fontSize: 13, fontWeight: 700 }}>
+              <Avatar
+                src={user?.kind === "company" ? assetUrl(user.avatarUrl) : undefined}
+                sx={{ width: 34, height: 34, bgcolor: "#4f46e5", fontSize: 13, fontWeight: 700 }}
+              >
                 {(user?.name ?? "U").slice(0, 2).toUpperCase()}
               </Avatar>
             </IconButton>
