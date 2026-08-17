@@ -1,5 +1,14 @@
 import Joi from "joi";
 
+const productVariantSchema = Joi.object({
+  name: Joi.string().min(1).required(),
+  options: Joi.array().items(Joi.string().min(1)).min(1).required(),
+  sku: Joi.string().min(1).required(),
+  price: Joi.number().min(0).optional(),
+  cost: Joi.number().min(0).optional(),
+  barcode: Joi.string().optional(),
+});
+
 export const productCreateSchema = Joi.object({
   sku: Joi.string().min(1).max(64).required(),
   name: Joi.string().min(1).max(200).required(),
@@ -11,35 +20,24 @@ export const productCreateSchema = Joi.object({
   barcode: Joi.string().max(64).default(""),
   lowStockThreshold: Joi.number().integer().min(0).default(5),
   images: Joi.array().items(Joi.string().uri()).default([]),
-  variants: Joi.array()
-    .items(
-      Joi.object({
-        name: Joi.string().min(1).required(),
-        options: Joi.array().items(Joi.string().min(1)).min(1).required(),
-        sku: Joi.string().min(1).required(),
-        price: Joi.number().min(0).optional(),
-        cost: Joi.number().min(0).optional(),
-        barcode: Joi.string().optional(),
-      }),
-    )
-    .default([]),
+  image: Joi.string().optional(),
+  variants: Joi.array().items(productVariantSchema).default([]),
 });
 
-const productKeys: string[] = [
-  "sku",
-  "name",
-  "description",
-  "categoryId",
-  "brand",
-  "price",
-  "cost",
-  "barcode",
-  "lowStockThreshold",
-  "images",
-  "variants",
-];
-
-export const productUpdateSchema = productCreateSchema.fork(productKeys, (schema) => schema.optional());
+export const productUpdateSchema = Joi.object({
+  sku: Joi.string().min(1).max(64).optional(),
+  name: Joi.string().min(1).max(200).optional(),
+  description: Joi.string().max(2000).optional(),
+  categoryId: Joi.string().allow(null).optional(),
+  brand: Joi.string().max(100).optional(),
+  price: Joi.number().min(0).optional(),
+  cost: Joi.number().min(0).optional(),
+  barcode: Joi.string().max(64).optional(),
+  lowStockThreshold: Joi.number().integer().min(0).optional(),
+  images: Joi.array().items(Joi.string().uri()).optional(),
+  image: Joi.string().optional(),
+  variants: Joi.array().items(productVariantSchema).optional(),
+});
 
 export const categorySchema = Joi.object({
   name: Joi.string().min(1).max(80).required(),

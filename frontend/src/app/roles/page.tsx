@@ -38,12 +38,17 @@ export default function RolesPage() {
   const [editingRole, setEditingRole] = useState<RoleRow | null>(null);
   const [perms, setPerms] = useState<string[]>([]);
 
+  const canRead = user?.kind === "company" && user.permissions.includes("roles:read");
+  const canCreate = user?.kind === "company" && user.permissions.includes("roles:create");
+  const canWrite = user?.kind === "company" && user.permissions.includes("roles:write");
+  const canDelete = user?.kind === "company" && user.permissions.includes("roles:delete");
+
   useEffect(() => {
-    if (user && !user.permissions.includes("auth:roles:read")) {
+    if (user && !canRead) {
       toastError("You don't have permission to manage roles");
       router.replace("/");
     }
-  }, [user, router]);
+  }, [user, canRead, router]);
 
   const memberCountById = useMemo(() => {
     const counts = new Map<string, number>();
@@ -52,7 +57,7 @@ export default function RolesPage() {
   }, [users]);
 
   if (!user) return <AppShell><Box /></AppShell>;
-  if (!user.permissions.includes("auth:roles:read")) return <AppShell><Box /></AppShell>;
+  if (!canRead) return <AppShell><Box /></AppShell>;
 
   const openPermDialog = (role: RoleRow) => {
     setEditingRole(role);
@@ -64,6 +69,11 @@ export default function RolesPage() {
     setEditingRole(null);
     setPerms([]);
     setCreateOpen(true);
+  };
+
+  const closePermDialog = () => {
+    setPermDialogOpen(false);
+    setEditingRole(null);
   };
 
   const handleDelete = async (role: RoleRow) => {
@@ -103,20 +113,19 @@ export default function RolesPage() {
     try {
       await api(`/roles/${editingRole.id}`, { method: "PATCH", body: { permissions: perms } });
       toastSuccess("Role updated");
-      setPermDialogOpen(false);
+      closePermDialog();
       refresh();
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to update role");
     }
   };
 
-  const isAdminRole = editingRole?.name === "admin";
   const permDialogReadOnly = editingRole ? editingRole.isSystem : false;
 
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Roles" subtitle="Permissions and access levels" />
+        <PageHeader title="Roles" subtitle="Control what each role can see and do in your workspace." />
       </motion.div>
       <motion.div variants={itemVariants}>
         <DataTable
@@ -141,15 +150,16 @@ export default function RolesPage() {
           onPageChange={setPage}
           loading={loading}
           emptyTitle="No roles"
+          emptySubtitle="Create your first role to control what team members can do"
           emptyIcon={<AdminPanelSettingsOutlinedIcon />}
           rowActions={(row) => (
             <Stack direction="row" spacing={1} justifyContent="flex-end">
-              {row.name !== "admin" && (
+              {canWrite && row.name !== "admin" && (
                 <Button size="small" variant="outlined" aria-label={`Edit ${row.name}`} onClick={() => openPermDialog(row)}>
                   <EditIcon fontSize="small" />
                 </Button>
               )}
-              {!row.isSystem && (
+              {canDelete && !row.isSystem && (
                 <Button size="small" variant="outlined" color="error" aria-label={`Delete ${row.name}`} onClick={() => void handleDelete(row)}>
                   <DeleteOutlineIcon fontSize="small" />
                 </Button>
@@ -157,33 +167,36 @@ export default function RolesPage() {
             </Stack>
           )}
           actions={
-            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>New role</Button>
+            canCreate ? (
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>New role</Button>
+            ) : undefined
           }
         />
 
-        <Dialog open={permDialogOpen} onClose={() => setPermDialogOpen(false)} fullWidth maxWidth="md">
-          <DialogTitle sx={{ fontWeight: 700, color: "#0f172a" }}>
-            {editingRole?.name}
-            <Typography sx={{ fontSize: 13, color: "#94a3b8", fontWeight: 400, mt: 0.5, display: "flex", alignItems: "center", gap: 1 }}>
-              {editingRole ? `${editingRole.permissions.length} permissions` : ""}
-              {editingRole?.isSystem && (
-                <Chip label="System" size="small" sx={{ bgcolor: "#f1f5f9", color: "#475569", fontWeight: 700, fontSize: 11 }} />
-              )}
-            </Typography>
-          </DialogTitle>
-          <DialogContent dividers sx={{ maxHeight: 480, overflow: "auto" }}>
-            <PermissionPicker value={perms} onChange={setPerms} disabled={permDialogReadOnly} />
-          </DialogContent>
-          {!permDialogReadOnly && (
-            <DialogActions sx={{ px: 3, py: 2 }}>
-              <Button onClick={() => setPermDialogOpen(false)} sx={{ color: "#64748b" }}>Cancel</Button>
-              <Button variant="contained" onClick={() => void handleSavePerms()} disabled={isAdminRole}>Save</Button>
-            </DialogActions>
-          )}
-        </Dialog>
+        {editingRole && (
+          <Dialog open={permDialogOpen} onClose={closePermDialog} fullWidth maxWidth="md">
+            <DialogTitle sx={{ fontWeight: 700, color: "#0f172a" }}>
+              {editingRole.name}
+              <Typography sx={{ fontSize: 13, color: "#94a3b8", fontWeight: 400, mt: 0.5, display: "flex", alignItems: "center", gap: 1 }}>
+                {editingRole.permissions.length} permissions
+                {editingRole.isSystem && (
+                  <Chip label="System" size="small" sx={{ bgcolor: "#f1f5f9", color: "#475569", fontWeight: 700, fontSize: 11 }} />
+                )}
+              </Typography>
+            </DialogTitle>
+            <DialogContent dividers sx={{ maxHeight: 480, overflow: "auto" }}>
+              <PermissionPicker value={perms} onChange={setPerms} disabled={permDialogReadOnly} />
+            </DialogContent>
+            {!permDialogReadOnly && canWrite && (
+              <DialogActions sx={{ px: 3, py: 2 }}>
+                <Button onClick={closePermDialog} sx={{ color: "#64748b" }}>Cancel</Button>
+                <Button variant="contained" onClick={() => void handleSavePerms()}>Save</Button>
+              </DialogActions>
+            )}
+          </Dialog>
+        )}
 
         <FormDialog
-          key={createOpen ? "new-role" : "closed"}
           open={createOpen}
           title="New role"
           maxWidth="md"

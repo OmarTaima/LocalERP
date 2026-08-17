@@ -36,7 +36,7 @@ purchasingRouter.get("/suppliers", rbac("purchasing:read"), asyncHandler(async (
   );
 }));
 
-purchasingRouter.post("/suppliers", rbac("purchasing:write"), validate(supplierSchema), asyncHandler(async (req, res) => {
+purchasingRouter.post("/suppliers", rbac("purchasing:create"), validate(supplierSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createSupplier(req.companyId, req.userId, req.body));
 }));
 
@@ -44,7 +44,7 @@ purchasingRouter.patch("/suppliers/:id", rbac("purchasing:write"), validate(supp
   res.json(await updateSupplier(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-purchasingRouter.delete("/suppliers/:id", rbac("purchasing:write"), asyncHandler(async (req, res) => {
+purchasingRouter.delete("/suppliers/:id", rbac("purchasing:delete"), asyncHandler(async (req, res) => {
   await deleteSupplier(req.companyId, req.userId, req.params.id);
   res.json({ ok: true });
 }));
@@ -61,7 +61,7 @@ purchasingRouter.get("/purchase-orders", rbac("purchasing:read"), asyncHandler(a
   );
 }));
 
-purchasingRouter.post("/purchase-orders", rbac("purchasing:write"), validate(purchaseOrderSchema), asyncHandler(async (req, res) => {
+purchasingRouter.post("/purchase-orders", rbac("purchasing:create"), validate(purchaseOrderSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createPurchaseOrder(req.companyId, req.userId, req.body));
 }));
 
@@ -73,7 +73,7 @@ purchasingRouter.patch("/purchase-orders/:id", rbac("purchasing:write"), validat
   res.json(await updatePurchaseOrder(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-purchasingRouter.post("/purchase-orders/:id/approve", rbac("approvals:write"), validate(approveSchema), asyncHandler(async (req, res) => {
+purchasingRouter.post("/purchase-orders/:id/approve", rbac("purchasing:write"), validate(approveSchema), asyncHandler(async (req, res) => {
   res.json(await approvePurchaseOrder(req.companyId, req.userId, req.params.id, req.body));
 }));
 
@@ -81,7 +81,7 @@ purchasingRouter.post("/purchase-orders/:id/receive", rbac("purchasing:write"), 
   res.json(await receivePurchaseOrder(req.companyId, req.userId, req.params.id));
 }));
 
-purchasingRouter.get("/approval-requests", rbac("approvals:read"), asyncHandler(async (req, res) => {
+purchasingRouter.get("/approval-requests", rbac("purchasing:read"), asyncHandler(async (req, res) => {
   const { page, pageSize } = parsePagination(req.query);
   res.json(
     await listApprovalRequests(req.companyId, {

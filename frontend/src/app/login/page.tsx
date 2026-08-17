@@ -102,6 +102,9 @@ export default function LoginPage() {
           <Typography sx={{ color: "#94a3b8", fontSize: 13.5, mt: 0.5 }}>
             Sign in to your workspace
           </Typography>
+          <Typography sx={{ color: "#64748b", fontSize: 12, mt: 0.5 }}>
+            Use the email and password your administrator gave you
+          </Typography>
         </Stack>
 
         <Paper elevation={0} sx={{ borderRadius: 4, p: { xs: 3, sm: 4 }, border: "1px solid rgba(226,232,240,0.6)", boxShadow: "0 24px 64px rgba(2,6,23,0.35)" }}>

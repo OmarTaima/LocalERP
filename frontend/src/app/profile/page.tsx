@@ -8,18 +8,16 @@ import Stack from "@mui/material/Stack";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
-import Avatar from "@mui/material/Avatar";
-import Tooltip from "@mui/material/Tooltip";
 import InputAdornment from "@mui/material/InputAdornment";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import SaveIcon from "@mui/icons-material/Save";
-import UploadIcon from "@mui/icons-material/Upload";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { AppShell, itemVariants } from "@/components/app-shell";
 import { PageHeader, toastSuccess, toastError, confirmAction } from "@/components/ui";
-import { api } from "@/lib/api";
+import { AvatarUpload } from "@/components/avatar-upload";
+import { api, assetUrl } from "@/lib/api";
 
 type CurrentUser = {
   id: string;
@@ -63,32 +61,17 @@ export default function ProfilePage() {
     );
   }
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toastError("Please select an image file (png, jpeg, webp)");
-      return;
+  const handleAvatarPicked = async (dataUrl: string) => {
+    setUploading(true);
+    try {
+      const res = await api<{ avatarUrl: string }>("/auth/avatar", { method: "POST", body: { image: dataUrl } });
+      setUser({ ...user, avatarUrl: res.avatarUrl });
+      toastSuccess("Avatar updated");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to upload avatar");
+    } finally {
+      setUploading(false);
     }
-    if (file.size > 1_500_000) {
-      toastError("Image must be smaller than 1.5 MB");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = reader.result as string;
-      setUploading(true);
-      try {
-        const res = await api<{ avatarUrl: string }>("/auth/avatar", { method: "POST", body: { image: dataUrl } });
-        setUser({ ...user, avatarUrl: res.avatarUrl });
-        toastSuccess("Avatar updated");
-      } catch (err) {
-        toastError(err instanceof Error ? err.message : "Failed to upload avatar");
-      } finally {
-        setUploading(false);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const handlePasswordChange = async () => {
@@ -136,50 +119,20 @@ export default function ProfilePage() {
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Profile" subtitle="Your account details, avatar and password" />
+        <PageHeader title="Profile" subtitle="Your account details, photo and password." />
       </motion.div>
 
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "2fr 1fr" }, gap: 3, mb: 3 }}>
         <motion.div variants={itemVariants}>
           <Paper elevation={0} sx={{ p: 3, border: "1px solid #e2e8f0", borderRadius: 3, height: "100%" }}>
             <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 0.5 }}>
-              <Box sx={{ position: "relative", display: "inline-flex" }}>
-                <Avatar
-                  src={user.avatarUrl ?? undefined}
-                  sx={{ width: 96, height: 96, border: "1px solid #e2e8f0", fontSize: 32 }}
-                >
-                  {!user.avatarUrl && initials}
-                </Avatar>
-                <Tooltip title={uploading ? "Uploading…" : "Change avatar"}>
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      inset: 0,
-                      borderRadius: "50%",
-                      bgcolor: "rgba(0,0,0,0.45)",
-                      opacity: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#fff",
-                      transition: "opacity 0.15s",
-                      cursor: uploading ? "wait" : "pointer",
-                      "&:hover": { opacity: 1 },
-                    }}
-                    onClick={() => !uploading && document.getElementById("avatar-input")?.click()}
-                  >
-                    <UploadIcon sx={{ fontSize: 22 }} />
-                  </Box>
-                </Tooltip>
-                <input
-                  id="avatar-input"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  hidden
-                  disabled={uploading}
-                  onChange={handleAvatarUpload}
-                />
-              </Box>
+              <AvatarUpload
+                value={assetUrl(user.avatarUrl) ?? null}
+                onChange={(dataUrl) => { if (dataUrl) void handleAvatarPicked(dataUrl); }}
+                disabled={uploading}
+                size={96}
+                placeholderIcon={<Typography sx={{ fontSize: 28, fontWeight: 700 }}>{initials}</Typography>}
+              />
               <Box>
                 <Typography variant="h6" sx={{ color: "#0f172a" }}>{user.name}</Typography>
                 <Typography sx={{ color: "#64748b", fontSize: 13 }}>{user.email}</Typography>

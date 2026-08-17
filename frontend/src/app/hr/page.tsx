@@ -505,7 +505,7 @@ export default function HrPage() {
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Human Resources" subtitle="Departments, employees, attendance and payroll" />
+        <PageHeader title="Human Resources" subtitle="Manage your team, attendance, leave and payroll." />
         <Box sx={{ mb: 1 }}>
           <Tabs
             value={tab}

@@ -54,7 +54,7 @@ hrRouter.get("/departments", rbac("hr:read"), asyncHandler(async (req, res) => {
   res.json(await listDepartments(req.companyId));
 }));
 
-hrRouter.post("/departments", rbac("hr:write"), validate(departmentSchema), asyncHandler(async (req, res) => {
+hrRouter.post("/departments", rbac("hr:create"), validate(departmentSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createDepartment(req.companyId, req.userId, req.body));
 }));
 
@@ -62,7 +62,7 @@ hrRouter.patch("/departments/:id", rbac("hr:write"), validate(departmentUpdateSc
   res.json(await updateDepartment(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-hrRouter.delete("/departments/:id", rbac("hr:write"), asyncHandler(async (req, res) => {
+hrRouter.delete("/departments/:id", rbac("hr:delete"), asyncHandler(async (req, res) => {
   res.json(await deleteDepartment(req.companyId, req.userId, req.params.id));
 }));
 
@@ -79,7 +79,7 @@ hrRouter.get("/employees", rbac("hr:read"), asyncHandler(async (req, res) => {
   );
 }));
 
-hrRouter.post("/employees", rbac("hr:write"), validate(employeeSchema), asyncHandler(async (req, res) => {
+hrRouter.post("/employees", rbac("hr:create"), validate(employeeSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createEmployee(req.companyId, req.userId, req.body));
 }));
 
@@ -91,7 +91,7 @@ hrRouter.patch("/employees/:id", rbac("hr:write"), validate(employeeUpdateSchema
   res.json(await updateEmployee(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-hrRouter.delete("/employees/:id", rbac("hr:write"), asyncHandler(async (req, res) => {
+hrRouter.delete("/employees/:id", rbac("hr:delete"), asyncHandler(async (req, res) => {
   res.json(await terminateEmployee(req.companyId, req.userId, req.params.id));
 }));
 
@@ -117,7 +117,7 @@ hrRouter.get("/timesheets", rbac("hr:read"), asyncHandler(async (req, res) => {
   );
 }));
 
-hrRouter.post("/timesheets", rbac("hr:write"), validate(timesheetSchema), asyncHandler(async (req, res) => {
+hrRouter.post("/timesheets", rbac("hr:create"), validate(timesheetSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await submitTimesheet(req.companyId, req.userId, req.body));
 }));
 
@@ -137,11 +137,11 @@ hrRouter.get("/leaves", rbac("hr:read"), asyncHandler(async (req, res) => {
   );
 }));
 
-hrRouter.post("/leaves", rbac("hr:write"), validate(leaveSchema), asyncHandler(async (req, res) => {
+hrRouter.post("/leaves", rbac("hr:create"), validate(leaveSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await requestLeave(req.companyId, req.userId, req.body));
 }));
 
-hrRouter.patch("/leaves/:id/status", rbac("approvals:write"), validate(leaveStatusSchema), asyncHandler(async (req, res) => {
+hrRouter.patch("/leaves/:id/status", rbac("hr:write"), validate(leaveStatusSchema), asyncHandler(async (req, res) => {
   res.json(await updateLeaveStatus(req.companyId, req.userId, req.params.id, req.body.status));
 }));
 
@@ -150,7 +150,7 @@ hrRouter.get("/payroll/runs", rbac("hr:read"), asyncHandler(async (req, res) => 
   res.json(await listPayrollRuns(req.companyId, { page, pageSize }));
 }));
 
-hrRouter.post("/payroll/runs", rbac("hr:write"), validate(payrollGenerateSchema), asyncHandler(async (req, res) => {
+hrRouter.post("/payroll/runs", rbac("hr:create"), validate(payrollGenerateSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await generatePayrollRun(req.companyId, req.userId, req.body));
 }));
 
@@ -162,7 +162,7 @@ hrRouter.get("/shift-patterns", rbac("hr:read"), asyncHandler(async (req, res) =
   res.json(await listShiftPatterns(req.companyId));
 }));
 
-hrRouter.post("/shift-patterns", rbac("hr:write"), validate(shiftPatternSchema), asyncHandler(async (req, res) => {
+hrRouter.post("/shift-patterns", rbac("hr:create"), validate(shiftPatternSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createShiftPattern(req.companyId, req.userId, req.body));
 }));
 
@@ -170,6 +170,6 @@ hrRouter.patch("/shift-patterns/:id", rbac("hr:write"), validate(shiftPatternUpd
   res.json(await updateShiftPattern(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-hrRouter.delete("/shift-patterns/:id", rbac("hr:write"), asyncHandler(async (req, res) => {
+hrRouter.delete("/shift-patterns/:id", rbac("hr:delete"), asyncHandler(async (req, res) => {
   res.json(await deleteShiftPattern(req.companyId, req.userId, req.params.id));
 }));

@@ -360,7 +360,7 @@ export default function FinancePage() {
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Accounting" subtitle="Chart of accounts, journal entries, reports and expenses" />
+        <PageHeader title="Accounting" subtitle="Track income, expenses and the money in your accounts." />
         <Tabs
           value={tab}
           onChange={(_, value) => setTab(value)}

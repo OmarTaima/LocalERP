@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Box from "@mui/material/Box";
 import Dialog from "@mui/material/Dialog";
@@ -29,6 +29,7 @@ export type FormField = {
   defaultValue?: string | number;
   fullWidth?: boolean;
   helper?: string;
+  disabled?: boolean;
 };
 
 export type LineItemField = {
@@ -51,6 +52,7 @@ export function FormDialog({
   loading,
   maxWidth,
   children,
+  onFieldChange,
 }: {
   open: boolean;
   title: string;
@@ -63,6 +65,7 @@ export function FormDialog({
   loading?: boolean;
   maxWidth?: "sm" | "md";
   children?: ReactNode;
+  onFieldChange?: (values: Record<string, string | number>) => void;
 }) {
   const [values, setValues] = useState<Record<string, string | number>>(() => {
     const seed: Record<string, string | number> = {};
@@ -74,8 +77,36 @@ export function FormDialog({
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const set = (name: string) => (event: React.ChangeEvent<HTMLInputElement>) =>
-    setValues((prev) => ({ ...prev, [name]: event.target.value }));
+  // Re-seeds select fields whose current value is no longer valid or empty so that
+  // dynamically loaded options (e.g. roles for a selected company) can supply a default.
+  const fieldsKey = fields
+    .map((field) => `${field.name}:${field.defaultValue ?? ""}:${(field.options ?? []).map((option) => option.value).join(",")}`)
+    .join("|");
+  const firstRun = useRef(true);
+
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    setValues((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const field of fields) {
+        if (field.type === "select" && field.options?.some((option) => option.value === String(prev[field.name]))) continue;
+        if (field.type !== "select" && prev[field.name] !== "" && prev[field.name] !== undefined) continue;
+        next[field.name] = field.defaultValue ?? "";
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [fieldsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const set = (name: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const next = { ...values, [name]: event.target.value };
+    setValues(next);
+    onFieldChange?.(next);
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -119,6 +150,7 @@ export function FormDialog({
               size="small"
               fullWidth
               helperText={field.helper}
+              disabled={field.disabled}
               slotProps={{
                 inputLabel: { shrink: true },
                 htmlInput: { min: field.type === "number" ? 0 : undefined },

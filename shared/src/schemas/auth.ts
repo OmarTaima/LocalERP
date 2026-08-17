@@ -20,6 +20,7 @@ export const userCreateSchema = Joi.object({
   name: Joi.string().min(2).max(80).required(),
   password: Joi.string().min(8).required(),
   roleId: Joi.string().min(1).optional(),
+  avatarBase64: Joi.string().optional(),
 });
 
 export const roleSchema = Joi.object({
@@ -34,3 +35,10 @@ export const totpSetupSchema = Joi.object({
 export const totpVerifySchema = Joi.object({
   code: Joi.string().length(6).required(),
 });
+
+export const companySettingsUpdateSchema = Joi.object({
+  name: Joi.string().min(2).max(80).optional(),
+  currency: Joi.string().pattern(/^[A-Z]{3}$/).optional(),
+  taxRate: Joi.number().min(0).max(100).optional(),
+  timezone: Joi.string().optional(),
+}).or("name", "currency", "taxRate", "timezone");

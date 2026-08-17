@@ -8,6 +8,7 @@ import {
 } from "@erp/shared";
 import { auth } from "../middleware/auth";
 import { company } from "../middleware/company";
+import { rbac } from "../middleware/rbac";
 import { validate } from "../middleware/validate";
 import { asyncHandler } from "../utils/async-handler";
 import {
@@ -43,19 +44,19 @@ authRouter.get("/me", auth, company, asyncHandler(async (req, res) => {
   res.json(await currentUser(req.userId));
 }));
 
-authRouter.patch("/password", auth, validate(changePasswordSchema), asyncHandler(async (req, res) => {
+authRouter.patch("/password", auth, company, rbac("profile:write"), validate(changePasswordSchema), asyncHandler(async (req, res) => {
   await changePassword(req.userId, req.body.currentPassword, req.body.newPassword);
   res.json({ ok: true });
 }));
 
-authRouter.post("/avatar", auth, asyncHandler(async (req, res) => {
+authRouter.post("/avatar", auth, company, rbac("profile:write"), asyncHandler(async (req, res) => {
   if (typeof req.body.image !== "string") {
     throw new AppError(400, "image is required");
   }
   res.json(await uploadAvatar(req.userId, req.body.image));
 }));
 
-authRouter.post("/2fa/setup", auth, validate(totpSetupSchema), asyncHandler(async (req, res) => {
+authRouter.post("/2fa/setup", auth, company, rbac("profile:write"), validate(totpSetupSchema), asyncHandler(async (req, res) => {
   const user = await currentUser(req.userId);
   if (req.body.password === undefined) {
     throw new AppError(400, "password is required");
@@ -64,7 +65,7 @@ authRouter.post("/2fa/setup", auth, validate(totpSetupSchema), asyncHandler(asyn
   res.json({ secret, recoveryCodes, otpauthUrl: `otpauth://totp/ERP:${user.email}?secret=${secret}&issuer=ERP` });
 }));
 
-authRouter.post("/2fa/verify", auth, validate(totpVerifySchema), asyncHandler(async (req, res) => {
+authRouter.post("/2fa/verify", auth, company, rbac("profile:write"), validate(totpVerifySchema), asyncHandler(async (req, res) => {
   await verifyTwoFactor(req.userId, req.body.code);
   res.json({ enabled: true });
 }));

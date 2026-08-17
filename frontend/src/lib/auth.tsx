@@ -2,17 +2,48 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { api, getRefreshToken, getToken, setTokens } from "./api";
+import { ApiError, api, getRefreshToken, getToken, setTokens } from "./api";
 
-export type Me = {
+export type CompanySession = {
+  kind: "company";
   id: string;
   email: string;
   name: string;
   roleId: string;
   companyId: string;
-  permissions: string[];
   roleName: string;
+  permissions: string[];
+  avatarUrl: string | null;
+  isActive: boolean;
+  lastLoginAt: string | null;
+  mustChangePassword: boolean;
 };
+
+export type SuperadminSession = {
+  kind: "superadmin";
+  id: string;
+  email: string;
+  name: string;
+};
+
+export type Me = CompanySession | SuperadminSession;
+
+type CompanyUser = Omit<CompanySession, "kind">;
+type SuperadminUser = Omit<SuperadminSession, "kind">;
+
+const AUTH_KIND_KEY = "erp_auth_kind";
+
+function getAuthKind(): "company" | "superadmin" | null {
+  if (typeof window === "undefined") return null;
+  const kind = window.localStorage.getItem(AUTH_KIND_KEY);
+  return kind === "company" || kind === "superadmin" ? kind : null;
+}
+
+function setAuthKind(kind: "company" | "superadmin" | null): void {
+  if (typeof window === "undefined") return;
+  if (kind) window.localStorage.setItem(AUTH_KIND_KEY, kind);
+  else window.localStorage.removeItem(AUTH_KIND_KEY);
+}
 
 type AuthContextValue = {
   user: Me | null;
@@ -41,29 +72,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: { refreshToken },
       });
       setTokens(tokens.accessToken, tokens.refreshToken);
-      const me = await api<Me>("/auth/me");
-      setUser(me);
+      setAuthKind("company");
+      const me = await api<CompanyUser>("/auth/me");
+      setUser({ kind: "company", ...me });
     } catch {
       setTokens(null, null);
+      setAuthKind(null);
       setUser(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const restoreSuperadmin = useCallback(async () => {
+    const accessToken = getToken();
+    if (!accessToken) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+    try {
+      const me = await api<SuperadminUser>("/admin/me");
+      setUser({ kind: "superadmin", ...me });
+    } catch (err) {
+      setUser(null);
+      if (err instanceof ApiError && err.status === 401) {
+        setTokens(null, null);
+        setAuthKind(null);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const login = useCallback(async (email: string, password: string, totpCode?: string) => {
-    const tokens = await api<{ accessToken: string; refreshToken: string }>("/auth/login", {
+  useEffect(() => {
+    if (getAuthKind() === "superadmin") {
+      void restoreSuperadmin();
+    } else {
+      void refresh();
+    }
+  }, [refresh, restoreSuperadmin]);
+
+  const login = useCallback(async (email: string, password: string, totpCode?: string): Promise<Me> => {
+    try {
+      const tokens = await api<{ accessToken: string; refreshToken: string }>("/auth/login", {
+        method: "POST",
+        body: { email, password, ...(totpCode ? { totpCode } : {}) },
+      });
+      setTokens(tokens.accessToken, tokens.refreshToken);
+      setAuthKind("company");
+      const me = await api<CompanyUser>("/auth/me");
+      const session: Me = { kind: "company", ...me };
+      setUser(session);
+      return session;
+    } catch (err) {
+      if (!(err instanceof ApiError) || (err.status !== 401 && err.status !== 403)) {
+        throw err;
+      }
+    }
+    const tokens = await api<{ accessToken: string }>("/admin/auth/login", {
       method: "POST",
-      body: { email, password, ...(totpCode ? { totpCode } : {}) },
+      body: { email, password },
     });
-    setTokens(tokens.accessToken, tokens.refreshToken);
-    const me = await api<Me>("/auth/me");
-    setUser(me);
-    return me;
+    setTokens(tokens.accessToken, null);
+    setAuthKind("superadmin");
+    const me = await api<SuperadminUser>("/admin/me");
+    const session: Me = { kind: "superadmin", ...me };
+    setUser(session);
+    return session;
   }, []);
 
   const logout = useCallback(async () => {
@@ -76,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setTokens(null, null);
+    setAuthKind(null);
     setUser(null);
   }, []);
 

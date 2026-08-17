@@ -38,6 +38,7 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 import { useAuth } from "@/lib/auth";
 import { confirmAction, toastSuccess } from "@/components/ui";
 
@@ -86,6 +87,17 @@ export const ADMIN_NAV_GROUP: NavGroup = {
   ],
 };
 
+export const PLATFORM_NAV_GROUPS: NavGroup[] = [
+  {
+    label: "Platform",
+    items: [
+      { label: "Companies", icon: <BusinessOutlinedIcon />, path: "/companies" },
+      { label: "Users", icon: <PeopleOutlineIcon />, path: "/platform/users" },
+      { label: "Roles & Permissions", icon: <AdminPanelSettingsOutlinedIcon />, path: "/platform/roles" },
+    ],
+  },
+];
+
 const listVariants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.08 } },
@@ -105,10 +117,15 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenu, setUserMenu] = useState<null | HTMLElement>(null);
 
-  const canAdmin = user?.permissions.includes("auth:users:write") ?? false;
-  const navGroups = canAdmin
-    ? NAV_GROUPS.flatMap((group) => (group.label === "System" ? [ADMIN_NAV_GROUP, group] : [group]))
-    : NAV_GROUPS;
+  const isSuperadmin = user?.kind === "superadmin";
+  const canAdmin =
+    user?.kind === "company" &&
+    (user.permissions.includes("users:read") || user.permissions.includes("roles:read"));
+  const navGroups = isSuperadmin
+    ? PLATFORM_NAV_GROUPS
+    : canAdmin
+      ? NAV_GROUPS.flatMap((group) => (group.label === "System" ? [ADMIN_NAV_GROUP, group] : [group]))
+      : NAV_GROUPS;
 
   const handleLogout = async () => {
     const ok = await confirmAction({
@@ -248,6 +265,11 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
     return null;
   }
 
+  if (isSuperadmin && !["/companies", "/platform/users", "/platform/roles"].includes(pathname)) {
+    router.replace("/companies");
+    return null;
+  }
+
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
       <AppBar
@@ -268,31 +290,35 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
               <MenuIcon />
             </IconButton>
           )}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              px: 1.5,
-              py: 0.75,
-              borderRadius: 2,
-              bgcolor: "#f1f5f9",
-              width: 320,
-              maxWidth: "40vw",
-            }}
-          >
-            <SearchIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
-            <InputBase placeholder="Search orders, products, employees…" sx={{ fontSize: 13.5, flex: 1 }} />
-          </Box>
+          {!isSuperadmin && (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                px: 1.5,
+                py: 0.75,
+                borderRadius: 2,
+                bgcolor: "#f1f5f9",
+                width: 320,
+                maxWidth: "40vw",
+              }}
+            >
+              <SearchIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+              <InputBase placeholder="Search orders, products, employees…" sx={{ fontSize: 13.5, flex: 1 }} />
+            </Box>
+          )}
           <Box sx={{ flex: 1 }} />
           {topbar}
-          <Tooltip title="Notifications">
-            <IconButton>
-              <Badge badgeContent={0} color="primary">
-                <NotificationsNoneIcon />
-              </Badge>
-            </IconButton>
-          </Tooltip>
+          {!isSuperadmin && (
+            <Tooltip title="Notifications">
+              <IconButton>
+                <Badge badgeContent={0} color="primary">
+                  <NotificationsNoneIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title="Account">
             <IconButton
               onClick={(event) => setUserMenu(event.currentTarget)}
@@ -312,9 +338,11 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
           >
             <MenuItem sx={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>Signed in as {user?.email}</MenuItem>
             <Divider />
-            <MenuItem sx={{ fontSize: 13.5, color: "#0f172a" }} onClick={() => router.push("/profile")}>
-              <AccountCircleOutlinedIcon sx={{ fontSize: 18, mr: 1.25 }} /> Profile
-            </MenuItem>
+            {!isSuperadmin && (
+              <MenuItem sx={{ fontSize: 13.5, color: "#0f172a" }} onClick={() => router.push("/profile")}>
+                <AccountCircleOutlinedIcon sx={{ fontSize: 18, mr: 1.25 }} /> Profile
+              </MenuItem>
+            )}
             <Divider />
             <MenuItem sx={{ fontSize: 13.5, color: "#dc2626" }} onClick={() => void handleLogout()}>
               <LogoutRoundedIcon sx={{ fontSize: 18, mr: 1.25 }} /> Sign out

@@ -1,5 +1,16 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
+/** Resolves backend-relative asset paths (/uploads/...) to an absolute URL on the backend origin. */
+export function assetUrl(path: string | null | undefined): string | undefined {
+  if (!path) return undefined;
+  if (/^https?:\/\//i.test(path)) return path;
+  if (path.startsWith("/uploads")) {
+    const origin = API_BASE.replace(/\/api\/v1\/?$/, "");
+    return `${origin}${path}`;
+  }
+  return path;
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -12,17 +23,6 @@ export class ApiError extends Error {
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem("erp_access_token");
-}
-
-export function getSaToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("erp_sa_access_token");
-}
-
-export function setSaToken(accessToken: string | null): void {
-  if (typeof window === "undefined") return;
-  if (accessToken) window.localStorage.setItem("erp_sa_access_token", accessToken);
-  else window.localStorage.removeItem("erp_sa_access_token");
 }
 
 export function getRefreshToken(): string | null {

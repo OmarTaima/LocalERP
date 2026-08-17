@@ -62,7 +62,7 @@ salesRouter.get("/customers", rbac("sales:read"), asyncHandler(async (req, res) 
   );
 }));
 
-salesRouter.post("/customers", rbac("sales:write"), validate(customerSchema), asyncHandler(async (req, res) => {
+salesRouter.post("/customers", rbac("sales:create"), validate(customerSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createCustomer(req.companyId, req.userId, req.body));
 }));
 
@@ -86,7 +86,7 @@ salesRouter.get("/quotes", rbac("sales:read"), asyncHandler(async (req, res) => 
   );
 }));
 
-salesRouter.post("/quotes", rbac("sales:write"), validate(quoteSchema), asyncHandler(async (req, res) => {
+salesRouter.post("/quotes", rbac("sales:create"), validate(quoteSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createQuote(req.companyId, req.userId, req.body));
 }));
 
@@ -117,7 +117,7 @@ salesRouter.get("/orders", rbac("sales:read"), asyncHandler(async (req, res) => 
   );
 }));
 
-salesRouter.post("/orders", rbac("sales:write"), validate(orderCreateSchema), asyncHandler(async (req, res) => {
+salesRouter.post("/orders", rbac("sales:create"), validate(orderCreateSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createOrder(req.companyId, req.userId, req.body));
 }));
 
@@ -145,7 +145,7 @@ salesRouter.get("/shipments", rbac("sales:read"), asyncHandler(async (req, res) 
   );
 }));
 
-salesRouter.post("/shipments", rbac("sales:write"), validate(shipmentSchema), asyncHandler(async (req, res) => {
+salesRouter.post("/shipments", rbac("sales:create"), validate(shipmentSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createShipment(req.companyId, req.userId, req.body));
 }));
 
@@ -165,7 +165,7 @@ salesRouter.get("/rmas", rbac("sales:read"), asyncHandler(async (req, res) => {
   );
 }));
 
-salesRouter.post("/rmas", rbac("sales:write"), validate(rmaSchema), asyncHandler(async (req, res) => {
+salesRouter.post("/rmas", rbac("sales:create"), validate(rmaSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createRma(req.companyId, req.userId, req.body));
 }));
 
@@ -185,7 +185,7 @@ salesRouter.get("/recurring-invoices", rbac("sales:read"), asyncHandler(async (r
   );
 }));
 
-salesRouter.post("/recurring-invoices", rbac("sales:write"), validate(recurringInvoiceSchema), asyncHandler(async (req, res) => {
+salesRouter.post("/recurring-invoices", rbac("sales:create"), validate(recurringInvoiceSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createRecurringInvoice(req.companyId, req.userId, req.body));
 }));
 

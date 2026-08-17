@@ -29,6 +29,8 @@ async function run(): Promise<void> {
     console.log(`  ok: ${message}`);
   };
 
+  const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
   await SuperAdminModel.create({
     email: "superadmin@smoke.com",
     name: "Smoke Super Admin",
@@ -53,6 +55,16 @@ async function run(): Promise<void> {
 
   const companyList = await request("/admin/companies", { headers: adminHeaders });
   expect((companyList.body as { total: number }).total === 1 && (companyList.body as { items: Array<{ usersCount: number }> }).items[0].usersCount === 0, "company list reports usersCount per company");
+
+  const adminCompanyLogo = await request(`/admin/companies/${companyId}/logo`, {
+    method: "POST",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ image: png }),
+  });
+  expect(adminCompanyLogo.status === 200 && typeof adminCompanyLogo.body.logoUrl === "string" && (adminCompanyLogo.body.logoUrl as string).startsWith("/uploads/logos/"), "superadmin uploads company logo");
+
+  const companyListWithLogo = await request("/admin/companies", { headers: adminHeaders });
+  expect((companyListWithLogo.body as { items: Array<{ logoUrl: string | null }> }).items[0].logoUrl === adminCompanyLogo.body.logoUrl, "GET /admin/companies includes logoUrl");
 
   const adminRole = await RoleModel.findOne({ companyId, name: "admin" });
   const createdUser = await request(`/admin/companies/${companyId}/users`, {
@@ -100,7 +112,7 @@ async function run(): Promise<void> {
   expect(
     adminCompanyRoles.status === 200 &&
       (adminCompanyRoles.body as unknown as Array<{ name: string; permissions: string[]; isSystem: boolean }>).some(
-        (role) => role.name === "admin" && role.isSystem && role.permissions.includes("auth:users:read"),
+        (role) => role.name === "admin" && role.isSystem && role.permissions.includes("users:read"),
       ),
     "superadmin can list company roles for first-admin provisioning",
   );
@@ -108,9 +120,133 @@ async function run(): Promise<void> {
   const authPermissionRole = await request("/roles", {
     method: "POST",
     headers: authHeaders,
-    body: JSON.stringify({ name: "Auth Operator", permissions: ["auth:users:read", "auth:roles:write", "catalog:read"] }),
+    body: JSON.stringify({ name: "Operator", permissions: ["users:read", "roles:write", "catalog:read"] }),
   });
-  expect(authPermissionRole.status === 201, "role with 3-segment auth:* permissions accepted by Joi");
+  expect(authPermissionRole.status === 201, "role with module:access permissions accepted by Joi");
+
+  const allUsers = await request("/admin/users", { headers: adminHeaders });
+  expect(
+    allUsers.status === 200 &&
+      (allUsers.body as { total: number }).total === 1 &&
+      (allUsers.body as { items: Array<{ companyName: string; roleName: string }> }).items[0].companyName === "Acme Corp" &&
+      (allUsers.body as { items: Array<{ companyName: string; roleName: string }> }).items[0].roleName === "admin",
+    "GET /admin/users lists all users with companyName + roleName",
+  );
+
+  const adminUserSearch = await request("/admin/users?search=omar", { headers: adminHeaders });
+  expect((adminUserSearch.body as { total: number }).total === 1, "GET /admin/users search filters by name");
+
+  const companyLogo = await request("/company/logo", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({ image: png }),
+  });
+  expect(companyLogo.status === 200 && (companyLogo.body.logoUrl as string).startsWith("/uploads/logos/"), "company-scoped logo upload sets logoUrl");
+
+  const avatarUser = await request("/users", {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({ name: "Avatar Tester", email: "avatar@acme.com", password: "SecurePass3", avatarBase64: png }),
+  });
+  expect(avatarUser.status === 201 && (avatarUser.body.avatarUrl as string).startsWith("/uploads/avatars/"), "company-scoped user create sets avatarUrl from avatarBase64");
+  const avatarUserId = (avatarUser.body as { id: string }).id;
+
+  const avatarUserPatch = await request(`/users/${avatarUserId}`, {
+    method: "PATCH",
+    headers: authHeaders,
+    body: JSON.stringify({ avatarBase64: png }),
+  });
+  expect(avatarUserPatch.status === 200 && (avatarUserPatch.body.avatarUrl as string).startsWith("/uploads/avatars/"), "company-scoped user avatar replaced via PATCH");
+
+  const adminCreatedUser = await request("/admin/users", {
+    method: "POST",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ name: "QA Analyst", email: "qa@acme.com", password: "SecurePass2", companyId }),
+  });
+  expect(
+    adminCreatedUser.status === 201 &&
+      (adminCreatedUser.body as { roleName: string }).roleName === "user" &&
+      (adminCreatedUser.body as { companyName: string }).companyName === "Acme Corp",
+    "POST /admin/users creates user with default company user role",
+  );
+  const adminUserId = (adminCreatedUser.body as { id: string }).id;
+
+  const duplicateAdminEmail = await request("/admin/users", {
+    method: "POST",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ name: "QA Duplicate", email: "qa@acme.com", password: "SecurePass2", companyId }),
+  });
+  expect(duplicateAdminEmail.status === 409, "POST /admin/users rejects duplicate email with 409");
+
+  const adminUserPatch = await request(`/admin/users/${adminUserId}`, {
+    method: "PATCH",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ name: "QA Lead", isActive: false }),
+  });
+  expect(adminUserPatch.status === 200 && (adminUserPatch.body as { name: string }).name === "QA Lead" && (adminUserPatch.body as { isActive: boolean }).isActive === false, "PATCH /admin/users/:id updates name + isActive");
+
+  const adminAvatarUser = await request("/admin/users", {
+    method: "POST",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ name: "Admin Avatar", email: "admin-avatar@acme.com", password: "SecurePass4", companyId, avatarBase64: png }),
+  });
+  expect(adminAvatarUser.status === 201 && (adminAvatarUser.body.avatarUrl as string).startsWith("/uploads/avatars/"), "POST /admin/users sets avatarUrl from avatarBase64");
+  const adminAvatarUserId = (adminAvatarUser.body as { id: string }).id;
+
+  const adminAvatarPatch = await request(`/admin/users/${adminAvatarUserId}`, {
+    method: "PATCH",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ avatarBase64: png }),
+  });
+  expect(adminAvatarPatch.status === 200 && (adminAvatarPatch.body.avatarUrl as string).startsWith("/uploads/avatars/"), "PATCH /admin/users/:id updates avatarUrl");
+
+  const adminUserDelete = await request(`/admin/users/${adminUserId}`, { method: "DELETE", headers: adminHeaders });
+  expect(adminUserDelete.status === 200, "DELETE /admin/users/:id soft-deactivates user");
+
+  const adminUserDeleteAgain = await request(`/admin/users/${adminUserId}`, { method: "DELETE", headers: adminHeaders });
+  expect(adminUserDeleteAgain.status === 200, "DELETE /admin/users/:id is idempotent");
+
+  const adminRoleCreated = await request(`/admin/companies/${companyId}/roles`, {
+    method: "POST",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ name: "QA Team", permissions: ["catalog:read", "catalog:create", "inventory:read"] }),
+  });
+  expect(adminRoleCreated.status === 201 && (adminRoleCreated.body as { isSystem: boolean }).isSystem === false, "superadmin creates a custom company role");
+  const adminRoleId = (adminRoleCreated.body as { id: string }).id;
+
+  const adminRoleDuplicate = await request(`/admin/companies/${companyId}/roles`, {
+    method: "POST",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ name: "QA Team", permissions: ["catalog:read"] }),
+  });
+  expect(adminRoleDuplicate.status === 409, "duplicate role name in company rejected with 409");
+
+  const adminRolePresetName = await request(`/admin/companies/${companyId}/roles`, {
+    method: "POST",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ name: "admin", permissions: ["catalog:read"] }),
+  });
+  expect(adminRolePresetName.status === 400, "role named after a system preset rejected with 400");
+
+  const adminRolePatch = await request(`/admin/companies/${companyId}/roles/${adminRoleId}`, {
+    method: "PATCH",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ permissions: ["catalog:read", "inventory:read", "sales:read"] }),
+  });
+  expect(adminRolePatch.status === 200 && (adminRolePatch.body as { permissions: string[] }).permissions.includes("sales:read"), "superadmin updates custom role permissions");
+
+  const adminSystemRoleRename = await request(`/admin/companies/${companyId}/roles/${adminRole!._id.toString()}`, {
+    method: "PATCH",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ name: "Renamed Admin" }),
+  });
+  expect(adminSystemRoleRename.status === 400, "system role rename rejected with 400");
+
+  const adminRoleDelete = await request(`/admin/companies/${companyId}/roles/${adminRoleId}`, { method: "DELETE", headers: adminHeaders });
+  expect(adminRoleDelete.status === 200, "superadmin deletes an unassigned custom role");
+
+  const adminSystemRoleDelete = await request(`/admin/companies/${companyId}/roles/${adminRole!._id.toString()}`, { method: "DELETE", headers: adminHeaders });
+  expect(adminSystemRoleDelete.status === 400, "system role deletion rejected with 400");
 
   const audit = await request("/audit-logs", { headers: authHeaders });
   expect(audit.status === 200 && ((audit.body as { total?: number }).total ?? 0) >= 1, "audit log records login event");
@@ -160,6 +296,22 @@ async function run(): Promise<void> {
   });
   expect(product.status === 201, "product created");
   const productId = (product.body as { id: string }).id;
+
+  const productWithImage = await post("/products", {
+    sku: "SKU-1003",
+    name: "Keyboard with photo",
+    price: 59.99,
+    cost: 30,
+    image: png,
+  });
+  expect(productWithImage.status === 201 && ((productWithImage.body as { images: string[] }).images[0] ?? "").startsWith("/uploads/product/"), "product photo upload sets images[0]");
+
+  const productPhotoPatch = await request(`/products/${productId}`, {
+    method: "PATCH",
+    headers: jsonHeaders,
+    body: JSON.stringify({ image: png }),
+  });
+  expect(productPhotoPatch.status === 200 && ((productPhotoPatch.body as { images: string[] }).images[0] ?? "").startsWith("/uploads/product/"), "product photo replaced via PATCH");
 
   const duplicateProduct = await post("/products", { sku: "SKU-1001", name: "Duplicate", price: 1, cost: 1 });
   expect(duplicateProduct.status === 409, "duplicate sku rejected with 409");
@@ -598,6 +750,25 @@ async function run(): Promise<void> {
 
   const recurringRun = await post("/recurring-invoices/run", {});
   expect(recurringRun.status === 200 && (recurringRun.body as { ran: number }).ran >= 0, "recurring invoice cron hook runs");
+
+  const companyRename = await request(`/admin/companies/${companyId}`, {
+    method: "PATCH",
+    headers: adminJsonHeaders,
+    body: JSON.stringify({ name: "Acme Corp Renewed" }),
+  });
+  expect(companyRename.status === 200 && (companyRename.body as { name: string }).name === "Acme Corp Renewed", "PATCH /admin/companies/:id updates name");
+
+  const companyDelete = await request(`/admin/companies/${companyId}`, { method: "DELETE", headers: adminHeaders });
+  expect(companyDelete.status === 200, "DELETE /admin/companies/:id soft-deactivates company");
+
+  const companyDeleteAgain = await request(`/admin/companies/${companyId}`, { method: "DELETE", headers: adminHeaders });
+  expect(companyDeleteAgain.status === 200, "DELETE /admin/companies/:id is idempotent");
+
+  const companyDeleteMissing = await request("/admin/companies/000000000000000000000000", { method: "DELETE", headers: adminHeaders });
+  expect(companyDeleteMissing.status === 404, "DELETE /admin/companies/:id 404s for missing company");
+
+  const companyListAfterDelete = await request("/admin/companies", { headers: adminHeaders });
+  expect((companyListAfterDelete.body as { items: Array<{ id: string; isActive: boolean }> }).items.find((item) => item.id === companyId)?.isActive === false, "deleted company listed with isActive false");
 
   server.close();
   await mongooseDisconnect();

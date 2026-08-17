@@ -10,6 +10,7 @@ export function serializeCompany(doc: CompanyDoc): Company {
     slug: doc.slug,
     plan: doc.plan,
     isActive: doc.isActive,
+    logoUrl: doc.logoUrl ?? null,
     settings: doc.settings,
     limits: doc.limits,
     createdAt: doc.createdAt.toISOString(),

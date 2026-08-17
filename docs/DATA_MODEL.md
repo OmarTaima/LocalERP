@@ -15,6 +15,7 @@ Legend: `T` = text search index, `U` = unique, `S` = sparse.
 | slug | string | unique, used in URLs |
 | plan | `starter\|pro\|enterprise` | default `starter` |
 | isActive | boolean | default true |
+| logoUrl | string | nullable; `/uploads/logos/...`, set via `POST /company/logo` or `POST /admin/companies/:id/logo` |
 | settings | { currency: string, taxRate: number, timezone: string } | defaults USD / 0 / UTC |
 | limits | { maxUsers, maxProducts, features[] } | enforced by `PlanLimit` |
 | createdAt / updatedAt | date | |
@@ -45,6 +46,7 @@ Not company-scoped. Authenticates via `POST /api/v1/admin/auth/login`; JWT carri
 | passwordHash | string | bcrypt, never returned |
 | name | string | required |
 | roleId | ObjectId → Role | |
+| avatarUrl | string | nullable; `/uploads/avatars/...` — set via `POST /auth/avatar`, or `avatarBase64` on user create/update |
 | isActive | boolean | default true |
 | lastLoginAt | date | nullable |
 | mustChangePassword | boolean | default false |
@@ -56,7 +58,7 @@ Indexes: `{ companyId, email } U`, `{ companyId, roleId }`
 |---|---|---|
 | companyId | ObjectId | |
 | name | string | e.g. `admin`, `manager`, `support` |
-| permissions | string[] | granular codes — see `docs/PERMISSIONS.md` |
+| permissions | string[] | `module:access` codes, 44 total (11 modules × read/write/create/delete) — see `docs/PERMISSIONS.md` |
 | isSystem | boolean | system roles not deletable |
 
 Indexes: `{ companyId, name } U`
@@ -127,7 +129,7 @@ Indexes: `{ companyId, parentId }`
 | barcode | string | |
 | isActive | boolean | default true |
 | lowStockThreshold | number | default 5 |
-| images | string[] | URLs |
+| images | string[] | URLs; a base64 `image` on create/update is saved to `/uploads/product/...` and becomes the array (replace semantics) |
 | variants | [{ name: string, options: string[], sku: string, price?: number, cost?: number, barcode?: string }] | optional |
 | version | number | optimistic lock |
 

@@ -19,8 +19,9 @@ import { AppShell, itemVariants } from "@/components/app-shell";
 import { PageHeader, StatusChip, toastSuccess, toastError, confirmAction } from "@/components/ui";
 import { DataTable } from "@/components/data-table";
 import { FormDialog } from "@/components/form-dialog";
+import { AvatarUpload } from "@/components/avatar-upload";
 import { useList, dateShort } from "@/lib/use-list";
-import { api } from "@/lib/api";
+import { api, assetUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 type UserRow = {
@@ -47,9 +48,10 @@ export default function UsersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [editingActive, setEditingActive] = useState(true);
+  const [avatarDraft, setAvatarDraft] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user && !user.permissions.includes("auth:users:read")) {
+    if (user && (user.kind !== "company" || !user.permissions.includes("users:read"))) {
       toastError("You don't have permission to manage users");
       router.replace("/");
     }
@@ -80,16 +82,18 @@ export default function UsersPage() {
   const employeeRole = roles.find((role) => role.name === "employee");
 
   if (!user) return <AppShell><Box /></AppShell>;
-  if (!user.permissions.includes("auth:users:read")) return <AppShell><Box /></AppShell>;
+  if (user.kind !== "company" || !user.permissions.includes("users:read")) return <AppShell><Box /></AppShell>;
 
   const openCreate = () => {
     setEditing(null);
+    setAvatarDraft(null);
     setCreateOpen(true);
   };
 
   const openEdit = (row: UserRow) => {
     setEditing(row);
     setEditingActive(row.isActive);
+    setAvatarDraft(null);
     setCreateOpen(true);
   };
 
@@ -121,7 +125,12 @@ export default function UsersPage() {
       if (editing) {
         await api(`/users/${editing.id}`, {
           method: "PATCH",
-          body: { name: values.name, roleId: values.roleId, isActive: editingActive },
+          body: {
+            name: values.name,
+            roleId: values.roleId,
+            isActive: editingActive,
+            ...(avatarDraft ? { avatarBase64: avatarDraft } : {}),
+          },
         });
         toastSuccess("User updated");
       } else {
@@ -132,12 +141,14 @@ export default function UsersPage() {
             email: values.email,
             password: values.password,
             ...(values.roleId ? { roleId: values.roleId } : {}),
+            ...(avatarDraft ? { avatarBase64: avatarDraft } : {}),
           },
         });
         toastSuccess("User created");
       }
       setCreateOpen(false);
       setEditing(null);
+      setAvatarDraft(null);
       fetchData(page);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Failed to save user");
@@ -147,7 +158,7 @@ export default function UsersPage() {
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Users" subtitle="Manage company users, roles and access" />
+        <PageHeader title="Users" subtitle="Invite people to the workspace and control their access." />
       </motion.div>
       <motion.div variants={itemVariants}>
         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
@@ -165,7 +176,7 @@ export default function UsersPage() {
               label: "User",
               render: (row) => (
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                  <Avatar src={row.avatarUrl ?? undefined} sx={{ width: 34, height: 34, bgcolor: "#4f46e5", fontSize: 13, fontWeight: 700 }}>
+                  <Avatar src={assetUrl(row.avatarUrl)} sx={{ width: 34, height: 34, bgcolor: "#4f46e5", fontSize: 13, fontWeight: 700 }}>
                     {!row.avatarUrl && row.name.slice(0, 2).toUpperCase()}
                   </Avatar>
                   <Box>
@@ -206,10 +217,12 @@ export default function UsersPage() {
           emptyIcon={<PeopleOutlineIcon />}
           rowActions={(row) => (
             <Stack direction="row" spacing={1} justifyContent="flex-end">
-              <Button size="small" variant="outlined" aria-label={`Edit ${row.name}`} onClick={() => openEdit(row)}>
-                <EditIcon fontSize="small" />
-              </Button>
-              {row.id !== user.id && (
+              {user.permissions.includes("users:write") && (
+                <Button size="small" variant="outlined" aria-label={`Edit ${row.name}`} onClick={() => openEdit(row)}>
+                  <EditIcon fontSize="small" />
+                </Button>
+              )}
+              {user.permissions.includes("users:delete") && row.id !== user.id && (
                 <Button size="small" variant="outlined" color="error" onClick={() => void handleToggleActive(row)}>
                   {row.isActive ? "Deactivate" : "Reactivate"}
                 </Button>
@@ -217,7 +230,9 @@ export default function UsersPage() {
             </Stack>
           )}
           actions={
-            <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>New user</Button>
+            user.permissions.includes("users:create") ? (
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>New user</Button>
+            ) : undefined
           }
         />
         <FormDialog
@@ -239,20 +254,23 @@ export default function UsersPage() {
                 ]
           }
           onSubmit={handleSubmit}
-          onClose={() => { setCreateOpen(false); setEditing(null); }}
+          onClose={() => { setCreateOpen(false); setEditing(null); setAvatarDraft(null); }}
           submitLabel={editing ? "Save" : "Create user"}
         >
-          {editing && (
-            <Stack spacing={0.5}>
-              <FormControlLabel
-                control={<Switch checked={editingActive} onChange={(e) => setEditingActive(e.target.checked)} disabled={editing.id === user.id} />}
-                label={<Typography sx={{ fontSize: 13.5, color: "#0f172a" }}>Active</Typography>}
-              />
-              {editing.id === user.id && (
-                <Typography sx={{ fontSize: 12, color: "#94a3b8" }}>You cannot deactivate your own account.</Typography>
-              )}
-            </Stack>
-          )}
+          <Stack spacing={2}>
+            <AvatarUpload value={avatarDraft ?? (assetUrl(editing?.avatarUrl) ?? null)} onChange={setAvatarDraft} />
+            {editing && (
+              <Stack spacing={0.5}>
+                <FormControlLabel
+                  control={<Switch checked={editingActive} onChange={(e) => setEditingActive(e.target.checked)} disabled={editing.id === user.id} />}
+                  label={<Typography sx={{ fontSize: 13.5, color: "#0f172a" }}>Active</Typography>}
+                />
+                {editing.id === user.id && (
+                  <Typography sx={{ fontSize: 12, color: "#94a3b8" }}>You cannot deactivate your own account.</Typography>
+                )}
+              </Stack>
+            )}
+          </Stack>
         </FormDialog>
       </motion.div>
     </AppShell>

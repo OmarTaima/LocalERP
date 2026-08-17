@@ -86,7 +86,8 @@ export default function HomePage() {
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "start", sm: "center" }} sx={{ mb: 3 }}>
           <Box>
             <Typography variant="h4" sx={{ color: "#0f172a" }}>Executive Overview</Typography>
-            <Typography sx={{ color: "#64748b", mt: 0.5, fontSize: 14 }}>
+            <Typography sx={{ color: "#64748b", mt: 0.5, fontSize: 14 }}>A quick look at how your business is doing today.</Typography>
+            <Typography sx={{ color: "#94a3b8", mt: 0.25, fontSize: 12.5 }}>
               {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })} · Live data
             </Typography>
           </Box>

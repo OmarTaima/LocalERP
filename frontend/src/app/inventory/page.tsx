@@ -213,7 +213,7 @@ export default function InventoryPage() {
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Inventory" subtitle="Warehouses, batches, transfers and stock levels" />
+        <PageHeader title="Inventory" subtitle="Track stock in your warehouses and move items between them." />
         <Tabs
           value={tab}
           onChange={(_, value) => setTab(value)}

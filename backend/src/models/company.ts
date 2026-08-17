@@ -16,6 +16,7 @@ const companySchema = new Schema<CompanyDoc>(
     slug: { type: String, required: true, unique: true },
     plan: { type: String, enum: ["starter", "pro", "enterprise"], default: "starter" },
     isActive: { type: Boolean, default: true },
+    logoUrl: { type: String, default: null },
     settings: {
       currency: { type: String, default: "USD" },
       taxRate: { type: Number, default: 0 },

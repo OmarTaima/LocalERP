@@ -2,8 +2,6 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { randomBytes } from "node:crypto";
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import type { AuthTokens, CurrentUser, User } from "@erp/shared";
 import { env } from "../config/env";
 import { ROLE_PRESETS } from "../constants/permissions";
@@ -12,6 +10,7 @@ import { RoleModel, SessionModel, TwoFactorModel, UserModel, type UserDoc } from
 import { AppError } from "../utils/errors";
 import { decryptSecret, encryptSecret, sha256 } from "../utils/crypto";
 import { generateBase32Secret, generateRecoveryCodes, verifyTotp } from "../utils/totp";
+import { removeUploadedFile, saveBase64Image } from "../utils/uploads";
 import { writeAudit } from "./audit.service";
 
 const SALT_ROUNDS = 12;
@@ -214,28 +213,16 @@ export async function changePassword(
 }
 
 export async function uploadAvatar(userId: string, imageDataUrl: string): Promise<{ avatarUrl: string }> {
-  const match = /^data:image\/(png|jpeg|webp);base64,(.+)$/.exec(imageDataUrl);
-  if (!match) {
-    throw new AppError(400, "avatar must be a base64 png, jpeg or webp image");
-  }
-  const [, extension, base64] = match;
-  const buffer = Buffer.from(base64, "base64");
-  if (buffer.length === 0 || buffer.length > 1_500_000) {
-    throw new AppError(400, "avatar must be between 1 byte and 1.5 MB");
-  }
+  const avatarUrl = await saveBase64Image(imageDataUrl, "avatars", "avatar");
   const user = await UserModel.findById(userId);
   if (!user) {
+    await removeUploadedFile(avatarUrl, "avatars");
     throw new AppError(404, "user not found");
   }
-  const avatarDir = path.join(env.UPLOAD_DIR, "avatars");
-  await fs.mkdir(avatarDir, { recursive: true });
-  const fileName = `${userId}.${extension}`;
-  await fs.writeFile(path.join(avatarDir, fileName), buffer);
   if (user.avatarUrl) {
-    const previous = path.join(avatarDir, path.basename(user.avatarUrl));
-    await fs.rm(previous, { force: true }).catch(() => undefined);
+    await removeUploadedFile(user.avatarUrl, "avatars");
   }
-  user.avatarUrl = `/uploads/avatars/${fileName}`;
+  user.avatarUrl = avatarUrl;
   await user.save();
   return { avatarUrl: user.avatarUrl };
 }

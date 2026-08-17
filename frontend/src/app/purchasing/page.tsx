@@ -252,7 +252,7 @@ export default function PurchasingPage() {
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Purchasing" subtitle="Suppliers, purchase orders and approval flows" />
+        <PageHeader title="Purchasing" subtitle="Order supplies from your suppliers and receive them." />
         <Tabs
           value={tab}
           onChange={(_, value) => setTab(value)}

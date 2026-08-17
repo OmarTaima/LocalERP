@@ -2,20 +2,25 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import { AppShell, itemVariants } from "@/components/app-shell";
 import { PageHeader, StatusChip, toastSuccess, toastError, confirmAction } from "@/components/ui";
 import { DataTable } from "@/components/data-table";
 import { FormDialog } from "@/components/form-dialog";
+import { AvatarUpload } from "@/components/avatar-upload";
 import { useList, useSimpleList, currency, dateShort } from "@/lib/use-list";
-import { api } from "@/lib/api";
+import { api, assetUrl } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
-type Product = { id: string; sku: string; name: string; brand: string; categoryId: string | null; price: number; cost: number; lowStockThreshold: number; isActive: boolean; createdAt: string };
+type Product = { id: string; sku: string; name: string; brand: string; categoryId: string | null; price: number; cost: number; lowStockThreshold: number; images: string[]; isActive: boolean; createdAt: string };
 type Category = { id: string; name: string; slug: string; parentId: string | null; order: number };
 type TaxRule = { id: string; name: string; rate: number; appliesTo: string; region: string | null; isActive: boolean };
 type PriceList = { id: string; name: string; isDefault: boolean; items: number };
@@ -24,19 +29,42 @@ type Warehouse = { id: string; name: string; isDefault: boolean; isActive: boole
 
 function ProductsTab() {
   const { rows, total, page, setPage, loading, refresh } = useList<Product>("/products");
+  const { user } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
+  const [productImage, setProductImage] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editImage, setEditImage] = useState<string | null>(null);
   const [adjustFor, setAdjustFor] = useState<Product | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+
+  const canEditProduct = user?.kind === "company" && user.permissions.includes("catalog:write");
 
   const openCreate = async () => {
     try {
       const categoryRows = await api<Category[]>("/categories");
       setCategories(categoryRows);
+      setProductImage(null);
       setCreateOpen(true);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "failed to load categories");
     }
+  };
+
+  const openEdit = async (product: Product) => {
+    try {
+      const categoryRows = await api<Category[]>("/categories");
+      setCategories(categoryRows);
+      setEditImage(null);
+      setEditingProduct(product);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "failed to load categories");
+    }
+  };
+
+  const closeEdit = () => {
+    setEditingProduct(null);
+    setEditImage(null);
   };
 
   const openAdjust = async (product: Product) => {
@@ -65,6 +93,17 @@ function ProductsTab() {
     <>
       <DataTable
         columns={[
+          {
+            label: "Photo",
+            render: (row) =>
+              row.images?.[0] ? (
+                <Box component="img" src={assetUrl(row.images[0])} alt={row.name} sx={{ width: 40, height: 40, borderRadius: 2, objectFit: "cover" }} />
+              ) : (
+                <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: "#eef2ff", color: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Inventory2OutlinedIcon sx={{ fontSize: 20 }} />
+                </Box>
+              ),
+          },
           { label: "SKU", render: (row) => <Typography sx={{ fontWeight: 600, color: "#4f46e5" }}>{row.sku}</Typography> },
           { label: "Name", render: (row) => <Typography sx={{ fontWeight: 600 }}>{row.name}</Typography> },
           { label: "Brand", render: (row) => row.brand || "—" },
@@ -85,6 +124,11 @@ function ProductsTab() {
         }
         rowActions={(row) => (
           <Stack direction="row" spacing={1} justifyContent="flex-end">
+            {canEditProduct && (
+              <Button size="small" variant="outlined" aria-label={`Edit ${row.name}`} onClick={() => void openEdit(row)}>
+                <EditIcon fontSize="small" />
+              </Button>
+            )}
             <Button size="small" variant="outlined" onClick={() => void openAdjust(row)}>Adjust stock</Button>
             {row.isActive && <Button size="small" variant="text" color="error" onClick={() => void deactivate(row)}>Deactivate</Button>}
           </Stack>
@@ -114,18 +158,76 @@ function ProductsTab() {
                 cost: Number(values.cost),
                 lowStockThreshold: Number(values.lowStockThreshold ?? 5),
                 ...(values.categoryId ? { categoryId: values.categoryId } : {}),
+                ...(productImage ? { image: productImage } : {}),
               },
             });
             toastSuccess("Product created");
             setCreateOpen(false);
+            setProductImage(null);
             void refresh();
           } catch (err) {
             toastError(err instanceof Error ? err.message : "failed to create product");
           }
         }}
-        onClose={() => setCreateOpen(false)}
+        onClose={() => { setCreateOpen(false); setProductImage(null); }}
         submitLabel="Create product"
-      />
+      >
+        <AvatarUpload
+          value={productImage}
+          onChange={setProductImage}
+          size={72}
+          shape="square"
+          placeholderIcon={<Inventory2OutlinedIcon sx={{ fontSize: 34 }} />}
+        />
+      </FormDialog>
+      <FormDialog
+        key={editingProduct ? `edit-${editingProduct.id}` : "new-product"}
+        open={editingProduct !== null}
+        title={editingProduct ? `Edit ${editingProduct.name}` : "Edit product"}
+        subtitle="Update the product details and photo"
+        fields={[
+          { name: "sku", label: "SKU", required: true, defaultValue: editingProduct?.sku },
+          { name: "name", label: "Name", required: true, defaultValue: editingProduct?.name },
+          { name: "categoryId", label: "Category", type: "select", options: [{ value: "", label: "None" }, ...categories.map((c) => ({ value: c.id, label: c.name }))], defaultValue: editingProduct?.categoryId ?? "" },
+          { name: "brand", label: "Brand", defaultValue: editingProduct?.brand },
+          { name: "price", label: "Selling price", type: "number", required: true, defaultValue: editingProduct?.price },
+          { name: "cost", label: "Cost", type: "number", required: true, defaultValue: editingProduct?.cost },
+          { name: "lowStockThreshold", label: "Low stock threshold", type: "number", defaultValue: editingProduct?.lowStockThreshold },
+        ]}
+        onSubmit={async (values) => {
+          if (!editingProduct) return;
+          try {
+            await api(`/products/${editingProduct.id}`, {
+              method: "PATCH",
+              body: {
+                sku: values.sku,
+                name: values.name,
+                brand: String(values.brand ?? ""),
+                price: Number(values.price),
+                cost: Number(values.cost),
+                lowStockThreshold: Number(values.lowStockThreshold ?? editingProduct.lowStockThreshold),
+                ...(values.categoryId ? { categoryId: values.categoryId } : {}),
+                ...(editImage ? { image: editImage } : {}),
+              },
+            });
+            toastSuccess("Product updated");
+            closeEdit();
+            void refresh();
+          } catch (err) {
+            toastError(err instanceof Error ? err.message : "failed to update product");
+          }
+        }}
+        onClose={closeEdit}
+        submitLabel="Save changes"
+      >
+        <AvatarUpload
+          value={editImage ?? (assetUrl(editingProduct?.images[0]) ?? null)}
+          onChange={setEditImage}
+          size={72}
+          shape="square"
+          placeholderIcon={<Inventory2OutlinedIcon sx={{ fontSize: 34 }} />}
+        />
+      </FormDialog>
       <FormDialog
         open={adjustFor !== null}
         title={`Adjust stock — ${adjustFor?.sku ?? ""}`}
@@ -413,7 +515,7 @@ export default function CatalogPage() {
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Catalog" subtitle="Products, categories, pricing, tax and replenishment rules" />
+        <PageHeader title="Catalog" subtitle="Manage the products you sell, plus categories, pricing and tax rules." />
         <Tabs
           value={tab}
           onChange={(_, value) => setTab(value)}

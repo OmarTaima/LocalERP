@@ -1,13 +1,12 @@
 import { Router } from "express";
 import { auth } from "../middleware/auth";
-import { rbac } from "../middleware/rbac";
 import { company } from "../middleware/company";
 import { asyncHandler } from "../utils/async-handler";
 import { NotificationModel } from "../models";
 
 export const notificationRouter = Router();
 
-notificationRouter.use(auth, company, rbac("notifications:read"));
+notificationRouter.use(auth, company);
 
 notificationRouter.get(
   "/",

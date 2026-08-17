@@ -33,7 +33,7 @@ manufacturingRouter.get("/boms", rbac("manufacturing:read"), asyncHandler(async 
   res.json(await listBoms(req.companyId));
 }));
 
-manufacturingRouter.post("/boms", rbac("manufacturing:write"), validate(bomSchema), asyncHandler(async (req, res) => {
+manufacturingRouter.post("/boms", rbac("manufacturing:create"), validate(bomSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createBom(req.companyId, req.userId, req.body));
 }));
 
@@ -41,7 +41,7 @@ manufacturingRouter.patch("/boms/:id", rbac("manufacturing:write"), validate(bom
   res.json(await updateBom(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-manufacturingRouter.delete("/boms/:id", rbac("manufacturing:write"), asyncHandler(async (req, res) => {
+manufacturingRouter.delete("/boms/:id", rbac("manufacturing:delete"), asyncHandler(async (req, res) => {
   await deleteBom(req.companyId, req.userId, req.params.id);
   res.json({ ok: true });
 }));
@@ -50,7 +50,7 @@ manufacturingRouter.get("/work-centers", rbac("manufacturing:read"), asyncHandle
   res.json(await listWorkCenters(req.companyId));
 }));
 
-manufacturingRouter.post("/work-centers", rbac("manufacturing:write"), validate(workCenterSchema), asyncHandler(async (req, res) => {
+manufacturingRouter.post("/work-centers", rbac("manufacturing:create"), validate(workCenterSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createWorkCenter(req.companyId, req.userId, req.body));
 }));
 
@@ -70,7 +70,7 @@ manufacturingRouter.get("/work-orders", rbac("manufacturing:read"), asyncHandler
   );
 }));
 
-manufacturingRouter.post("/work-orders", rbac("manufacturing:write"), validate(workOrderSchema), asyncHandler(async (req, res) => {
+manufacturingRouter.post("/work-orders", rbac("manufacturing:create"), validate(workOrderSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createWorkOrder(req.companyId, req.userId, req.body));
 }));
 

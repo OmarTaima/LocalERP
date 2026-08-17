@@ -12,6 +12,7 @@ import {
   type CategoryDoc,
 } from "../models";
 import { serializeCategory, serializeProduct } from "../utils/serializers";
+import { saveBase64Image } from "../utils/uploads";
 
 export function slugifyName(value: string): string {
   return value
@@ -162,6 +163,7 @@ export type ProductInput = {
   barcode?: string;
   lowStockThreshold?: number;
   images?: string[];
+  image?: string;
   isActive?: boolean;
   variants?: Array<{
     name: string;
@@ -180,6 +182,7 @@ export async function createProduct(companyId: string, userId: string, input: Pr
   }
   const duplicate = await ProductModel.exists({ companyId, sku: input.sku });
   if (duplicate) throw new AppError(409, "sku already exists");
+  const images = input.image ? [await saveBase64Image(input.image, "product")] : (input.images ?? []);
   const doc = await ProductModel.create({
     companyId,
     sku: input.sku,
@@ -191,7 +194,7 @@ export async function createProduct(companyId: string, userId: string, input: Pr
     cost: input.cost,
     barcode: input.barcode ?? "",
     lowStockThreshold: input.lowStockThreshold ?? 5,
-    images: input.images ?? [],
+    images,
     variants: input.variants ?? [],
     version: 1,
   });
@@ -231,7 +234,11 @@ export async function updateProduct(
   if (input.barcode !== undefined) doc.barcode = input.barcode;
   if (input.isActive !== undefined) doc.isActive = input.isActive;
   if (input.lowStockThreshold !== undefined) doc.lowStockThreshold = input.lowStockThreshold;
-  if (input.images !== undefined) doc.images = input.images;
+  if (input.image !== undefined) {
+    doc.images = [await saveBase64Image(input.image, "product")];
+  } else if (input.images !== undefined) {
+    doc.images = input.images;
+  }
   if (input.variants !== undefined) doc.variants = input.variants;
   doc.version += 1;
   await doc.save();

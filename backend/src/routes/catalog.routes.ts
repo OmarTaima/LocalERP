@@ -46,7 +46,7 @@ catalogRouter.get("/categories", rbac("catalog:read"), asyncHandler(async (req, 
   res.json(await listCategories(req.companyId));
 }));
 
-catalogRouter.post("/categories", rbac("catalog:write"), validate(categorySchema), asyncHandler(async (req, res) => {
+catalogRouter.post("/categories", rbac("catalog:create"), validate(categorySchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createCategory(req.companyId, req.userId, req.body));
 }));
 
@@ -54,7 +54,7 @@ catalogRouter.patch("/categories/:id", rbac("catalog:write"), asyncHandler(async
   res.json(await updateCategory(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-catalogRouter.delete("/categories/:id", rbac("catalog:write"), asyncHandler(async (req, res) => {
+catalogRouter.delete("/categories/:id", rbac("catalog:delete"), asyncHandler(async (req, res) => {
   await deleteCategory(req.companyId, req.userId, req.params.id);
   res.json({ ok: true });
 }));
@@ -73,7 +73,7 @@ catalogRouter.get("/products", rbac("catalog:read"), asyncHandler(async (req, re
   res.json(products);
 }));
 
-catalogRouter.post("/products", rbac("catalog:write"), validate(productCreateSchema), asyncHandler(async (req, res) => {
+catalogRouter.post("/products", rbac("catalog:create"), validate(productCreateSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createProduct(req.companyId, req.userId, req.body));
 }));
 
@@ -85,12 +85,12 @@ catalogRouter.patch("/products/:id", rbac("catalog:write"), validate(productUpda
   res.json(await updateProduct(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-catalogRouter.delete("/products/:id", rbac("catalog:write"), asyncHandler(async (req, res) => {
+catalogRouter.delete("/products/:id", rbac("catalog:delete"), asyncHandler(async (req, res) => {
   await deactivateProduct(req.companyId, req.userId, req.params.id);
   res.json({ ok: true });
 }));
 
-catalogRouter.get("/products/:id/movements", rbac("inventory:read"), asyncHandler(async (req, res) => {
+catalogRouter.get("/products/:id/movements", rbac("catalog:read"), asyncHandler(async (req, res) => {
   const { page, pageSize } = parsePagination(req.query);
   const { from, to } = parseDateRange(req.query);
   res.json(
@@ -103,7 +103,7 @@ catalogRouter.get("/products/:id/movements", rbac("inventory:read"), asyncHandle
   );
 }));
 
-catalogRouter.post("/products/:id/stock-adjust", rbac("inventory:write"), validate(stockAdjustSchema), asyncHandler(async (req, res) => {
+catalogRouter.post("/products/:id/stock-adjust", rbac("catalog:write"), validate(stockAdjustSchema), asyncHandler(async (req, res) => {
   res.json(await adjustStock(req.companyId, req.userId, req.params.id, req.body));
 }));
 
@@ -111,7 +111,7 @@ catalogRouter.get("/price-lists", rbac("catalog:read"), asyncHandler(async (req,
   res.json(await listPriceLists(req.companyId));
 }));
 
-catalogRouter.post("/price-lists", rbac("catalog:write"), validate(priceListSchema), asyncHandler(async (req, res) => {
+catalogRouter.post("/price-lists", rbac("catalog:create"), validate(priceListSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createPriceList(req.companyId, req.userId, req.body));
 }));
 
@@ -134,7 +134,7 @@ catalogRouter.get("/tax-rules", rbac("catalog:read"), asyncHandler(async (req, r
   );
 }));
 
-catalogRouter.post("/tax-rules", rbac("catalog:write"), validate(taxRuleSchema), asyncHandler(async (req, res) => {
+catalogRouter.post("/tax-rules", rbac("catalog:create"), validate(taxRuleSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createTaxRule(req.companyId, req.userId, req.body));
 }));
 
@@ -142,7 +142,7 @@ catalogRouter.patch("/tax-rules/:id", rbac("catalog:write"), asyncHandler(async 
   res.json(await updateTaxRule(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-catalogRouter.delete("/tax-rules/:id", rbac("catalog:write"), asyncHandler(async (req, res) => {
+catalogRouter.delete("/tax-rules/:id", rbac("catalog:delete"), asyncHandler(async (req, res) => {
   await deleteTaxRule(req.companyId, req.userId, req.params.id);
   res.json({ ok: true });
 }));
@@ -161,11 +161,11 @@ catalogRouter.get("/reorder-rules", rbac("catalog:read"), asyncHandler(async (re
   );
 }));
 
-catalogRouter.post("/reorder-rules", rbac("catalog:write"), validate(reorderRuleSchema), asyncHandler(async (req, res) => {
+catalogRouter.post("/reorder-rules", rbac("catalog:create"), validate(reorderRuleSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await upsertReorderRule(req.companyId, req.userId, req.body));
 }));
 
-catalogRouter.delete("/reorder-rules/:id", rbac("catalog:write"), asyncHandler(async (req, res) => {
+catalogRouter.delete("/reorder-rules/:id", rbac("catalog:delete"), asyncHandler(async (req, res) => {
   await deleteReorderRule(req.companyId, req.userId, req.params.id);
   res.json({ ok: true });
 }));

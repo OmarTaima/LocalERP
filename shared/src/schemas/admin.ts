@@ -17,6 +17,7 @@ export const createCompanySchema = Joi.object({
 });
 
 export const updateCompanySchema = Joi.object({
+  name: Joi.string().min(2).max(80).optional(),
   plan: Joi.string().valid("starter", "pro", "enterprise").optional(),
   isActive: Joi.boolean().optional(),
   limits: Joi.object({
@@ -25,3 +26,25 @@ export const updateCompanySchema = Joi.object({
     features: Joi.array().items(Joi.string()).optional(),
   }).optional(),
 });
+
+export const adminCreateUserSchema = Joi.object({
+  name: Joi.string().min(2).max(80).required(),
+  email: Joi.string().email().required(),
+  password: Joi.string().min(8).required(),
+  companyId: Joi.string().min(1).required(),
+  roleId: Joi.string().min(1).optional(),
+  avatarBase64: Joi.string().optional(),
+});
+
+export const adminUpdateUserSchema = Joi.object({
+  name: Joi.string().min(2).max(80).optional(),
+  roleId: Joi.string().min(1).optional(),
+  companyId: Joi.string().min(1).optional(),
+  isActive: Joi.boolean().optional(),
+  avatarBase64: Joi.string().optional(),
+}).min(1);
+
+export const adminUpdateRoleSchema = Joi.object({
+  name: Joi.string().min(2).max(40).optional(),
+  permissions: Joi.array().items(Joi.string().pattern(/^[a-z]+(:[a-z]+)+$/)).min(1).optional(),
+}).min(1);

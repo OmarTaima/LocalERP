@@ -11,6 +11,7 @@ import { AppError } from "../utils/errors";
 import { RoleModel, CompanyModel, UserModel } from "../models";
 import bcrypt from "bcryptjs";
 import { writeAudit } from "../services/audit.service";
+import { removeUploadedFile, saveBase64Image } from "../utils/uploads";
 
 export const userRouter = Router();
 
@@ -18,7 +19,7 @@ userRouter.use(auth, company);
 
 userRouter.get(
   "/",
-  rbac("auth:users:read"),
+  rbac("users:read"),
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip, limit } = parsePagination(req.query);
     const search = typeof req.query.search === "string" ? req.query.search : "";
@@ -36,7 +37,7 @@ userRouter.get(
 
 userRouter.post(
   "/",
-  rbac("auth:users:write"),
+  rbac("users:create"),
   validate(userCreateSchema),
   asyncHandler(async (req, res) => {
     const companyDoc = await CompanyModel.findById(req.companyId);
@@ -63,6 +64,7 @@ userRouter.post(
       passwordHash: await bcrypt.hash(req.body.password, 12),
       name: req.body.name,
       roleId: role._id,
+      avatarUrl: req.body.avatarBase64 ? await saveBase64Image(req.body.avatarBase64, "avatars", "avatar") : null,
       isActive: true,
     });
     await writeAudit({
@@ -80,7 +82,7 @@ userRouter.post(
 
 userRouter.patch(
   "/:id",
-  rbac("auth:users:write"),
+  rbac("users:write"),
   asyncHandler(async (req, res) => {
     const user = await UserModel.findOne({ _id: req.params.id, companyId: req.companyId });
     if (!user) {
@@ -94,6 +96,13 @@ userRouter.patch(
       const role = await RoleModel.findOne({ _id: req.body.roleId, companyId: req.companyId });
       if (!role) throw new AppError(400, "role does not exist in this company");
       updates.roleId = role._id;
+    }
+    if (typeof req.body.avatarBase64 === "string") {
+      const avatarUrl = await saveBase64Image(req.body.avatarBase64, "avatars", "avatar");
+      if (user.avatarUrl) {
+        await removeUploadedFile(user.avatarUrl, "avatars");
+      }
+      updates.avatarUrl = avatarUrl;
     }
     Object.assign(user, updates);
     await user.save();
@@ -114,7 +123,7 @@ userRouter.patch(
 
 userRouter.delete(
   "/:id",
-  rbac("auth:users:write"),
+  rbac("users:delete"),
   asyncHandler(async (req, res) => {
     if (req.params.id === req.userId) {
       throw new AppError(400, "cannot deactivate your own account");

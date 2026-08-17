@@ -319,7 +319,7 @@ export default function ManufacturingPage() {
   return (
     <AppShell>
       <motion.div variants={itemVariants}>
-        <PageHeader title="Manufacturing" subtitle="Bills of materials, work centers, work orders and MRP" />
+        <PageHeader title="Manufacturing" subtitle="Plan production and turn raw materials into finished goods." />
         <Tabs
           value={tab}
           onChange={(_, value) => setTab(value)}

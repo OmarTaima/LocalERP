@@ -1,87 +1,54 @@
 # Permissions Catalog
 
-Granular permission codes — `<domain>:<action>`. Roles are sets of these codes. Route guards check codes from the JWT; the UI filters menus and routes identically.
+Granular permission codes — `<module>:<access>`. Roles are sets of these codes. Route guards check codes from the JWT; the UI filters menus and routes identically.
 
-## Catalog
+## Catalog: 11 modules × 4 access levels = 44 codes
 
-| Code | Meaning |
+Every module exposes the same four access levels:
+
+| Access | Meaning |
 |---|---|
-| `catalog:read` | view products, categories, price lists, tax rules, reorder rules |
-| `catalog:write` | create/update/deactivate products, categories, lists, rules |
+| `read` | view/list/detail endpoints (GET) |
+| `write` | update + action endpoints (PATCH, status changes, approve, receive, adjust, pay, start/complete, bulk actions) |
+| `create` | create endpoints (POST for new resources) |
+| `delete` | delete/deactivate endpoints (DELETE) |
 
-## Inventory
-
-| Code | Meaning |
+| Module | Codes |
 |---|---|
-| `inventory:read` | view stock, movements, batches, warehouses |
-| `inventory:write` | adjust stock, transfer, receive goods, manage warehouses |
+| companies | `companies:read`, `companies:write`, `companies:create`, `companies:delete` |
+| users | `users:read`, `users:write`, `users:create`, `users:delete` |
+| roles | `roles:read`, `roles:write`, `roles:create`, `roles:delete` |
+| profile | `profile:read`, `profile:write`, `profile:create`, `profile:delete` |
+| hr | `hr:read`, `hr:write`, `hr:create`, `hr:delete` |
+| accountant | `accountant:read`, `accountant:write`, `accountant:create`, `accountant:delete` |
+| manufacturing | `manufacturing:read`, `manufacturing:write`, `manufacturing:create`, `manufacturing:delete` |
+| purchasing | `purchasing:read`, `purchasing:write`, `purchasing:create`, `purchasing:delete` |
+| inventory | `inventory:read`, `inventory:write`, `inventory:create`, `inventory:delete` |
+| catalog | `catalog:read`, `catalog:write`, `catalog:create`, `catalog:delete` |
+| sales | `sales:read`, `sales:write`, `sales:create`, `sales:delete` |
 
-## Sales
+`profile` guards self-service endpoints (`PATCH /auth/password`, `POST /auth/avatar`, 2FA setup/verify). The accountant module guards all finance endpoints (journals, expenses, claims, exchange rates, reports).
 
-| Code | Meaning |
-|---|---|
-| `sales:read` | view customers, quotes, orders, shipments, RMAs, recurring invoices |
-| `sales:write` | create/edit orders, quotes, payments, shipments, RMAs, refunds |
-
-## Purchasing
-
-| Code | Meaning |
-|---|---|
-| `purchasing:read` | view suppliers, purchase orders |
-| `purchasing:write` | create/edit POs, receive goods (GRN) |
-
-## Approvals
-
-| Code | Meaning |
-|---|---|
-| `approvals:read` | view approval queue |
-| `approvals:write` | approve/reject requests (PO, claims, leaves) |
-
-## Accounting & Finance
-
-| Code | Meaning |
-|---|---|
-| `finance:read` | view accounts, journals, reports, expenses |
-| `finance:write` | post journals, manage accounts, expenses, FX, claims |
-
-## Manufacturing
-
-| Code | Meaning |
-|---|---|
-| `manufacturing:read` | view BOMs, work centers, work orders, MRP |
-| `manufacturing:write` | create/release/complete work orders, manage BOMs |
-
-## HR
-
-| Code | Meaning |
-|---|---|
-| `hr:read` | view employees, attendance, timesheets, leaves, payroll |
-| `hr:write` | manage employees, attendance, payroll runs |
-
-## Auth & System
-
-| Code | Meaning |
-|---|---|
-| `auth:users:read` / `auth:users:write` | manage users |
-| `auth:roles:read` / `auth:roles:write` | manage roles & permissions |
-| `auth:sessions:read` / `auth:sessions:write` | manage sessions |
-| `company:read` / `company:write` | company settings, API keys |
-| `dashboard:read` | dashboard KPIs and alerts |
-| `audit:read` | audit trail + compliance export |
-| `notifications:read` | notifications |
-| `imports:write` / `imports:read` | import jobs |
-| `exports:read` | export jobs |
-
-## Role presets (seeded per company)
+## Role presets (seeded per company, `isSystem: true`)
 
 | Role | Permissions |
 |---|---|
-| **admin** | all |
-| **manager** | all read + sales:write, purchasing:write, approvals:write, hr:read, finance:read |
-| **accountant** | finance:read/write, accounting:read/write, dashboard:read, audit:read |
-| **support** | catalog:read, inventory:read, sales:read/write, customers |
-| **storefront** (API key only) | catalog:read, sales:write (e-commerce orders) |
-| **employee** (self-service) | hr:read (own), notifications:read |
+| **admin** | all 44 codes |
+| **manager** | catalog/inventory/sales/purchasing/manufacturing/hr: read + write + create; accountant/users/roles/companies: read; profile: read + write |
+| **accountant** | accountant: read + write + create + delete; users/roles/companies: read; profile: read + write |
+| **support** | catalog: read + write + create; inventory/purchasing/hr: read; sales: read + write + create; profile: read + write |
+| **employee** | hr: read; profile: read + write |
+| **user** | catalog/inventory/sales/purchasing/hr: read; profile: read + write |
+
+## Auth-only (no permission code)
+
+The following areas no longer require a permission code — any authenticated, company-scoped user may access them:
+
+- Dashboard endpoints (`GET /dashboard/stats`, `GET /dashboard/approvals`, `GET /dashboard/alerts`)
+- Notifications (`GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`)
+- Audit trail (`GET /audit-logs`, `GET /audit-logs/export`)
+- Import/export jobs (`POST /imports`, `GET /imports/:id`, `GET /exports`, `GET /exports/:id/download`)
+- `GET /auth/me`
 
 ## Route → permission map
 

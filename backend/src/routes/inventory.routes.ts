@@ -26,7 +26,7 @@ inventoryRouter.get("/warehouses", rbac("inventory:read"), asyncHandler(async (r
   res.json(await listWarehouses(req.companyId));
 }));
 
-inventoryRouter.post("/warehouses", rbac("inventory:write"), validate(warehouseSchema), asyncHandler(async (req, res) => {
+inventoryRouter.post("/warehouses", rbac("inventory:create"), validate(warehouseSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createWarehouse(req.companyId, req.userId, req.body));
 }));
 
@@ -34,12 +34,12 @@ inventoryRouter.patch("/warehouses/:id", rbac("inventory:write"), asyncHandler(a
   res.json(await updateWarehouse(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-inventoryRouter.delete("/warehouses/:id", rbac("inventory:write"), asyncHandler(async (req, res) => {
+inventoryRouter.delete("/warehouses/:id", rbac("inventory:delete"), asyncHandler(async (req, res) => {
   await deleteWarehouse(req.companyId, req.userId, req.params.id);
   res.json({ ok: true });
 }));
 
-inventoryRouter.post("/warehouses/transfer", rbac("inventory:write"), validate(transferSchema), asyncHandler(async (req, res) => {
+inventoryRouter.post("/warehouses/transfer", rbac("inventory:create"), validate(transferSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createTransfer(req.companyId, req.userId, req.body));
 }));
 

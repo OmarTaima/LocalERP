@@ -18,6 +18,7 @@ export type Company = Timestamps & {
   slug: string;
   plan: PlanTier;
   isActive: boolean;
+  logoUrl: string | null;
   settings: CompanySettings;
   limits: CompanyLimits;
 };

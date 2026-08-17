@@ -43,23 +43,23 @@ export const financeRouter = Router();
 
 financeRouter.use(auth, company);
 
-financeRouter.get("/accounts", rbac("finance:read"), asyncHandler(async (req, res) => {
+financeRouter.get("/accounts", rbac("accountant:read"), asyncHandler(async (req, res) => {
   res.json(await listAccounts(req.companyId));
 }));
 
-financeRouter.post("/accounts", rbac("finance:write"), validate(accountSchema), asyncHandler(async (req, res) => {
+financeRouter.post("/accounts", rbac("accountant:create"), validate(accountSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createAccount(req.companyId, req.userId, req.body));
 }));
 
-financeRouter.patch("/accounts/:id", rbac("finance:write"), validate(accountUpdateSchema), asyncHandler(async (req, res) => {
+financeRouter.patch("/accounts/:id", rbac("accountant:write"), validate(accountUpdateSchema), asyncHandler(async (req, res) => {
   res.json(await updateAccount(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-financeRouter.post("/accounts/seed", rbac("finance:write"), asyncHandler(async (req, res) => {
+financeRouter.post("/accounts/seed", rbac("accountant:write"), asyncHandler(async (req, res) => {
   res.json({ created: await seedAccounts(req.companyId) });
 }));
 
-financeRouter.get("/journal-entries", rbac("finance:read"), asyncHandler(async (req, res) => {
+financeRouter.get("/journal-entries", rbac("accountant:read"), asyncHandler(async (req, res) => {
   const { page, pageSize } = parsePagination(req.query);
   const { from, to } = parseDateRange(req.query);
   res.json(
@@ -73,37 +73,37 @@ financeRouter.get("/journal-entries", rbac("finance:read"), asyncHandler(async (
   );
 }));
 
-financeRouter.post("/journal-entries", rbac("finance:write"), validate(journalEntrySchema), asyncHandler(async (req, res) => {
+financeRouter.post("/journal-entries", rbac("accountant:create"), validate(journalEntrySchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createJournalEntry(req.companyId, req.userId, req.body));
 }));
 
-financeRouter.get("/journal-entries/:id", rbac("finance:read"), asyncHandler(async (req, res) => {
+financeRouter.get("/journal-entries/:id", rbac("accountant:read"), asyncHandler(async (req, res) => {
   res.json(await getJournalEntry(req.companyId, req.params.id));
 }));
 
-financeRouter.post("/journal-entries/:id/reverse", rbac("finance:write"), asyncHandler(async (req, res) => {
+financeRouter.post("/journal-entries/:id/reverse", rbac("accountant:write"), asyncHandler(async (req, res) => {
   res.status(201).json(await reverseJournalEntry(req.companyId, req.userId, req.params.id));
 }));
 
-financeRouter.get("/reports/trial-balance", rbac("finance:read"), asyncHandler(async (req, res) => {
+financeRouter.get("/reports/trial-balance", rbac("accountant:read"), asyncHandler(async (req, res) => {
   const { from, to } = parseDateRange(req.query);
   res.json(await trialBalance(req.companyId, { from: from ? from.toISOString() : undefined, to: to ? to.toISOString() : undefined }));
 }));
 
-financeRouter.get("/reports/pnl", rbac("finance:read"), asyncHandler(async (req, res) => {
+financeRouter.get("/reports/pnl", rbac("accountant:read"), asyncHandler(async (req, res) => {
   const { from, to } = parseDateRange(req.query);
   res.json(await profitAndLoss(req.companyId, { from: from ? from.toISOString() : undefined, to: to ? to.toISOString() : undefined }));
 }));
 
-financeRouter.get("/reports/balance-sheet", rbac("finance:read"), asyncHandler(async (req, res) => {
+financeRouter.get("/reports/balance-sheet", rbac("accountant:read"), asyncHandler(async (req, res) => {
   res.json(await balanceSheet(req.companyId, { asOf: typeof req.query.asOf === "string" ? req.query.asOf : undefined }));
 }));
 
-financeRouter.get("/reports/aging", rbac("finance:read"), asyncHandler(async (req, res) => {
+financeRouter.get("/reports/aging", rbac("accountant:read"), asyncHandler(async (req, res) => {
   res.json(await aging(req.companyId, { type: req.query.type === "ap" ? "ap" : "ar" }));
 }));
 
-financeRouter.get("/expenses", rbac("finance:read"), asyncHandler(async (req, res) => {
+financeRouter.get("/expenses", rbac("accountant:read"), asyncHandler(async (req, res) => {
   const { page, pageSize } = parsePagination(req.query);
   const { from, to } = parseDateRange(req.query);
   res.json(
@@ -117,20 +117,20 @@ financeRouter.get("/expenses", rbac("finance:read"), asyncHandler(async (req, re
   );
 }));
 
-financeRouter.post("/expenses", rbac("finance:write"), validate(expenseSchema), asyncHandler(async (req, res) => {
+financeRouter.post("/expenses", rbac("accountant:create"), validate(expenseSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createExpense(req.companyId, req.userId, req.body));
 }));
 
-financeRouter.patch("/expenses/:id", rbac("finance:write"), validate(expenseUpdateSchema), asyncHandler(async (req, res) => {
+financeRouter.patch("/expenses/:id", rbac("accountant:write"), validate(expenseUpdateSchema), asyncHandler(async (req, res) => {
   res.json(await updateExpense(req.companyId, req.userId, req.params.id, req.body));
 }));
 
-financeRouter.delete("/expenses/:id", rbac("finance:write"), asyncHandler(async (req, res) => {
+financeRouter.delete("/expenses/:id", rbac("accountant:delete"), asyncHandler(async (req, res) => {
   await deleteExpense(req.companyId, req.userId, req.params.id);
   res.json({ ok: true });
 }));
 
-financeRouter.get("/expense-claims", rbac("finance:read"), asyncHandler(async (req, res) => {
+financeRouter.get("/expense-claims", rbac("accountant:read"), asyncHandler(async (req, res) => {
   const { page, pageSize } = parsePagination(req.query);
   res.json(
     await listExpenseClaims(req.companyId, {
@@ -141,15 +141,15 @@ financeRouter.get("/expense-claims", rbac("finance:read"), asyncHandler(async (r
   );
 }));
 
-financeRouter.post("/expense-claims", rbac("finance:write"), validate(expenseClaimSchema), asyncHandler(async (req, res) => {
+financeRouter.post("/expense-claims", rbac("accountant:create"), validate(expenseClaimSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await createExpenseClaim(req.companyId, req.userId, req.body));
 }));
 
-financeRouter.patch("/expense-claims/:id/status", rbac("approvals:write"), validate(expenseClaimStatusSchema), asyncHandler(async (req, res) => {
+financeRouter.patch("/expense-claims/:id/status", rbac("accountant:write"), validate(expenseClaimStatusSchema), asyncHandler(async (req, res) => {
   res.json(await updateExpenseClaimStatus(req.companyId, req.userId, req.params.id, req.body.status));
 }));
 
-financeRouter.get("/exchange-rates", rbac("finance:read"), asyncHandler(async (req, res) => {
+financeRouter.get("/exchange-rates", rbac("accountant:read"), asyncHandler(async (req, res) => {
   const { page, pageSize } = parsePagination(req.query);
   res.json(
     await listExchangeRates(req.companyId, {
@@ -161,6 +161,6 @@ financeRouter.get("/exchange-rates", rbac("finance:read"), asyncHandler(async (r
   );
 }));
 
-financeRouter.post("/exchange-rates", rbac("finance:write"), validate(exchangeRateSchema), asyncHandler(async (req, res) => {
+financeRouter.post("/exchange-rates", rbac("accountant:create"), validate(exchangeRateSchema), asyncHandler(async (req, res) => {
   res.status(201).json(await upsertExchangeRate(req.companyId, req.userId, req.body));
 }));

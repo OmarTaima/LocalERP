@@ -272,7 +272,7 @@ function QuotesTab() {
       onPageChange={setPage}
       loading={loading}
       emptyTitle="No quotes yet"
-      emptySubtitle="Quotes created through the API appear here"
+      emptySubtitle="Quotes sent to customers will appear here"
       rowActions={(row) =>
         row.status === "draft" ? (
           <Button size="small" variant="outlined" onClick={() => void convert(row)}>Convert to order</Button>
@@ -397,7 +397,7 @@ export default function SalesPage() {
       <motion.div variants={itemVariants}>
         <PageHeader
           title="Sales & Orders"
-          subtitle="Customers, quotes, orders, payments, shipments and returns"
+          subtitle="Sell to customers, manage orders, and track payments and returns."
         />
         <Tabs
           value={tab}

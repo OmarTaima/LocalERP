@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { auth } from "../middleware/auth";
-import { rbac } from "../middleware/rbac";
 import { company } from "../middleware/company";
 import { asyncHandler } from "../utils/async-handler";
 import { parseDateRange, parsePagination } from "../utils/pagination";
@@ -12,7 +11,6 @@ auditRouter.use(auth, company);
 
 auditRouter.get(
   "/",
-  rbac("audit:read"),
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip, limit } = parsePagination(req.query);
     const { from, to } = parseDateRange(req.query);

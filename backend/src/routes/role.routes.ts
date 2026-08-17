@@ -16,7 +16,7 @@ roleRouter.use(auth, company);
 
 roleRouter.get(
   "/",
-  rbac("auth:roles:read"),
+  rbac("roles:read"),
   asyncHandler(async (req, res) => {
     const { page, pageSize, skip, limit } = parsePagination(req.query);
     const filter = { companyId: req.companyId };
@@ -43,7 +43,7 @@ roleRouter.get(
 
 roleRouter.post(
   "/",
-  rbac("auth:roles:write"),
+  rbac("roles:create"),
   validate(roleSchema),
   asyncHandler(async (req, res) => {
     const exists = await RoleModel.exists({ companyId: req.companyId, name: req.body.name });
@@ -71,7 +71,7 @@ roleRouter.post(
 
 roleRouter.patch(
   "/:id",
-  rbac("auth:roles:write"),
+  rbac("roles:write"),
   asyncHandler(async (req, res) => {
     const role = await RoleModel.findOne({ _id: req.params.id, companyId: req.companyId });
     if (!role) {
@@ -97,7 +97,7 @@ roleRouter.patch(
 
 roleRouter.delete(
   "/:id",
-  rbac("auth:roles:write"),
+  rbac("roles:delete"),
   asyncHandler(async (req, res) => {
     const role = await RoleModel.findOne({ _id: req.params.id, companyId: req.companyId });
     if (!role) {
