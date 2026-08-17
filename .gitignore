@@ -9,3 +9,5 @@ out/
 .DS_Store
 coverage/
 .turbo/
+# TypeScript build cache
+*.tsbuildinfo
