@@ -217,6 +217,9 @@ export default function InventoryPage() {
         <Tabs
           value={tab}
           onChange={(_, value) => setTab(value)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
           sx={{ mb: 3, "& .MuiTab-root": { textTransform: "none", fontWeight: 600, fontSize: 13.5 } }}
         >
           <Tab label="Warehouses" />

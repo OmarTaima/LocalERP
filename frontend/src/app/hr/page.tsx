@@ -509,7 +509,10 @@ export default function HrPage() {
         <Box sx={{ mb: 1 }}>
           <Tabs
             value={tab}
-            onChange={(_, value) => setTab(value)}
+onChange={(_, value) => setTab(value)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
             sx={{ minHeight: 48 }}
           >
             <Tab label="Departments" />
