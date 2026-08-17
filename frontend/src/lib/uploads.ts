@@ -4,7 +4,7 @@ type DirectUpload = { uploadURL: string; publicUrl: string };
 
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAYS_MS = [1_000, 2_000];
-const PUT_TIMEOUT_MS = 120_000;
+const UPLOAD_TIMEOUT_MS = 120_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -17,16 +17,17 @@ async function requestUploadUrl(file: File, folder: string): Promise<DirectUploa
   });
 }
 
-function putFile(
+function postFile(
   uploadUrl: string,
   file: File,
   onProgress?: (percent: number) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    const form = new FormData();
+    form.append("file", file);
     const xhr = new XMLHttpRequest();
-    xhr.open("PUT", uploadUrl);
-    xhr.timeout = PUT_TIMEOUT_MS;
-    xhr.setRequestHeader("Content-Type", file.type);
+    xhr.open("POST", uploadUrl);
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && onProgress) {
         onProgress(Math.round((event.loaded / event.total) * 100));
@@ -38,15 +39,15 @@ function putFile(
     };
     xhr.onerror = () => reject(new Error("network error during upload"));
     xhr.ontimeout = () => reject(new Error("upload timed out"));
-    xhr.send(file);
+    xhr.send(form);
   });
 }
 
 /**
  * Uploads a file straight to Cloudflare Images.
- * Presigns via POST /upload/direct, then PUTs the raw bytes to the returned
- * upload URL. Retries up to 3 attempts with exponential backoff and resolves
- * with the final public URL.
+ * Requests an upload URL via POST /upload/direct, then POSTs the file as
+ * multipart/form-data (field "file") to the returned upload URL. Retries up to
+ * 3 attempts with exponential backoff and resolves with the final public URL.
  */
 export async function uploadDirect(
   file: File,
@@ -57,7 +58,7 @@ export async function uploadDirect(
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {
       const { uploadURL, publicUrl } = await requestUploadUrl(file, folder);
-      await putFile(uploadURL, file, onProgress);
+      await postFile(uploadURL, file, onProgress);
       return publicUrl;
     } catch (err) {
       lastDetail = err instanceof Error ? err.message : "unknown error";

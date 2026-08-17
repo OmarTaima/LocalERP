@@ -2,7 +2,7 @@ import { env } from "../config/env";
 import { AppError } from "./errors";
 
 const CLOUDFLARE_IMAGES_API = "https://api.cloudflare.com/client/v4";
-const DIRECT_UPLOAD_TTL_SECONDS = 600;
+const DIRECT_UPLOAD_TTL_MS = 10 * 60 * 1000;
 
 export type DirectUploadResult = {
   uploadURL: string;
@@ -42,11 +42,11 @@ export async function createDirectUpload(
   });
 
   const form = new FormData();
-  form.append("expiry", String(DIRECT_UPLOAD_TTL_SECONDS));
+  form.append("expiry", new Date(Date.now() + DIRECT_UPLOAD_TTL_MS).toISOString());
   form.append("metadata", metadata);
 
   const uploadRes = await fetch(
-    `${CLOUDFLARE_IMAGES_API}/accounts/${accountId}/images/v1/direct_upload`,
+    `${CLOUDFLARE_IMAGES_API}/accounts/${accountId}/images/v2/direct_upload`,
     {
       method: "POST",
       headers: { authorization: `Bearer ${token}` },

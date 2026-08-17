@@ -87,6 +87,7 @@ async function run(): Promise<void> {
     slug: COMPANY_SLUG,
     plan: "enterprise",
     isActive: true,
+    logoUrl: "https://ui-avatars.com/api/?name=Acme+Demo&background=4f46e5&color=fff&size=256",
     settings: { currency: "USD", taxRate: 0, timezone: "UTC" },
     limits: { maxUsers: 500, maxProducts: 50000, features: ["manufacturing", "api-keys", "multi-currency"] },
   });
@@ -116,7 +117,7 @@ async function run(): Promise<void> {
     { email: "it@acme.demo", name: "Grace Lin", role: "user", password: PASSWORD },
   ];
   const users: Record<string, string> = {};
-  for (const u of userData) {
+  for (const [index, u] of userData.entries()) {
     const doc = await UserModel.create({
       companyId: company._id,
       email: u.email,
@@ -126,7 +127,7 @@ async function run(): Promise<void> {
       isActive: true,
       lastLoginAt: new Date(),
       mustChangePassword: false,
-      avatarUrl: null,
+      avatarUrl: `https://i.pravatar.cc/150?img=${index + 1}`,
     });
     users[u.email] = doc._id.toString();
   }
@@ -181,6 +182,7 @@ async function run(): Promise<void> {
       categoryId: categories[p.category],
       lowStockThreshold: p.threshold ?? 5,
       description: `Demo product ${p.name}`,
+      image: `https://picsum.photos/seed/${p.sku.toLowerCase()}/400/400`,
     });
     productIds.push(doc.id);
     await adjustStock(companyId, users[ADMIN_EMAIL], doc.id, { warehouseId: mainId, quantity: p.main, note: "seed initial stock" });
