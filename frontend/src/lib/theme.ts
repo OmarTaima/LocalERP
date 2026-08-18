@@ -5,6 +5,7 @@ import { createTheme } from "@mui/material/styles";
 const EN_FONT_FAMILY = '"Segoe UI", "Inter", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 export function createAppTheme(direction: "ltr" | "rtl") {
+  const rtl = direction === "rtl";
   return createTheme({
     direction,
     palette: {
@@ -61,7 +62,26 @@ export function createAppTheme(direction: "ltr" | "rtl") {
             borderRadius: 8,
             padding: "8px 18px",
           },
+          ...(rtl
+            ? {
+                startIcon: { marginLeft: 8, marginRight: -4 },
+                endIcon: { marginLeft: -4, marginRight: 8 },
+              }
+            : {}),
         },
+        ...(rtl
+          ? {
+              variants: [
+                {
+                  props: { size: "small" },
+                  style: {
+                    "& .MuiButton-startIcon": { marginRight: -2 },
+                    "& .MuiButton-endIcon": { marginLeft: -2 },
+                  },
+                },
+              ],
+            }
+          : {}),
       },
       MuiPaper: {
         styleOverrides: {
@@ -119,6 +139,42 @@ export function createAppTheme(direction: "ltr" | "rtl") {
             textAlign: "start",
           },
         },
+      },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: rtl
+            ? {
+                left: "auto",
+                right: 0,
+                transformOrigin: "top right",
+                "&.MuiInputLabel-outlined": { transform: "translate(-14px, 16px) scale(1)" },
+                "&.MuiInputLabel-outlined.MuiInputLabel-sizeSmall": { transform: "translate(-14px, 9px) scale(1)" },
+                "&.MuiInputLabel-outlined.MuiInputLabel-shrink": { transform: "translate(-14px, -9px) scale(0.75)" },
+                "&.MuiInputLabel-outlined.MuiInputLabel-shrink.MuiInputLabel-sizeSmall": {
+                  transform: "translate(-14px, 4px) scale(0.75)",
+                },
+              }
+            : {},
+        },
+      },
+      MuiInputAdornment: {
+        styleOverrides: {
+          root: rtl
+            ? {
+                "&.MuiInputAdornment-positionStart": { marginRight: 0, marginLeft: 8 },
+                "&.MuiInputAdornment-positionEnd": { marginLeft: 0, marginRight: 8 },
+              }
+            : {},
+        },
+      },
+      MuiSelect: {
+        styleOverrides: rtl
+          ? {
+              select: { paddingRight: 14, paddingLeft: 32 },
+              icon: { right: "auto", left: 7 },
+              iconOutlined: { right: "auto", left: 7 },
+            }
+          : {},
       },
       MuiFormHelperText: {
         styleOverrides: {

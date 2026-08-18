@@ -25,6 +25,7 @@ import { AppShell, itemVariants } from "@/components/app-shell";
 import { PageHeader, toastSuccess, toastError, confirmAction } from "@/components/ui";
 import { AvatarUpload } from "@/components/avatar-upload";
 import { api, assetUrl } from "@/lib/api";
+import { setCompanyCurrency } from "@/lib/use-list";
 import { useAuth } from "@/lib/auth";
 import { useAppLocale } from "@/lib/locale";
 
@@ -173,10 +174,12 @@ export default function SettingsPage() {
   const handleSaveCompany = async () => {
     setSaving(true);
     try {
-      await api("/company/settings", {
+      const res = await api<{ name: string; settings: CompanySettings }>("/company/settings", {
         method: "PATCH",
         body: { name: companyName.trim(), settings: { currency, taxRate: Number(taxRate), timezone } },
       });
+      setCompanyCurrency(res.settings.currency);
+      setCompany((prev) => (prev ? { ...prev, name: res.name, settings: res.settings } : prev));
       toastSuccess(t("settingsSaved"));
     } catch (err) {
       toastError(err instanceof Error ? err.message : t("failedSaveSettings"));
@@ -354,16 +357,16 @@ export default function SettingsPage() {
                       <Chip label={company.plan} size="small" sx={{ bgcolor: planTone.bg, color: planTone.color, fontWeight: 700, textTransform: "capitalize" }} />
                     </Stack>
                     <Divider sx={{ my: 2 }} />
-                    <Stack direction="row" spacing={5}>
+                    <Stack direction="row" spacing={{ xs: 4, sm: 8 }}>
                       <Box>
                         <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94a3b8" }}>{t("users")}</Typography>
-                        <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#0f172a", mt: 0.5 }}>
+                        <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#0f172a", mt: 1 }}>
                           {usersTotal} <Box component="span" sx={{ fontSize: 14, fontWeight: 500, color: "#94a3b8" }}>{t("ofMaxUsers", { max: company.limits.maxUsers })}</Box>
                         </Typography>
                       </Box>
                       <Box>
                         <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94a3b8" }}>{t("products")}</Typography>
-                        <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#0f172a", mt: 0.5 }}>
+                        <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#0f172a", mt: 1 }}>
                           {numberFormat.format(productsTotal)}
                         </Typography>
                       </Box>

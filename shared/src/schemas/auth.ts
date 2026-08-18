@@ -41,4 +41,9 @@ export const companySettingsUpdateSchema = Joi.object({
   currency: Joi.string().pattern(/^[A-Z]{3}$/).optional(),
   taxRate: Joi.number().min(0).max(100).optional(),
   timezone: Joi.string().optional(),
-}).or("name", "currency", "taxRate", "timezone");
+  settings: Joi.object({
+    currency: Joi.string().pattern(/^[A-Z]{3}$/).optional(),
+    taxRate: Joi.number().min(0).max(100).optional(),
+    timezone: Joi.string().optional(),
+  }).optional(),
+}).or("name", "currency", "taxRate", "timezone", "settings");

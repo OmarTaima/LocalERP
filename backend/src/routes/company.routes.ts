@@ -38,17 +38,22 @@ companyRouter.patch(
     }
     const before = { name: companyDoc.name, settings: JSON.parse(JSON.stringify(companyDoc.settings)) };
     const settings = companyDoc.settings;
+    const settingsInput = (req.body.settings ?? req.body) as {
+      currency?: string;
+      taxRate?: number;
+      timezone?: string;
+    };
     if (typeof req.body.name === "string") {
       companyDoc.name = req.body.name;
     }
-    if (typeof req.body.currency === "string") {
-      settings.currency = req.body.currency;
+    if (typeof settingsInput.currency === "string") {
+      settings.currency = settingsInput.currency;
     }
-    if (typeof req.body.taxRate === "number") {
-      settings.taxRate = req.body.taxRate;
+    if (typeof settingsInput.taxRate === "number") {
+      settings.taxRate = settingsInput.taxRate;
     }
-    if (typeof req.body.timezone === "string") {
-      settings.timezone = req.body.timezone;
+    if (typeof settingsInput.timezone === "string") {
+      settings.timezone = settingsInput.timezone;
     }
     await companyDoc.save();
     await writeAudit({
