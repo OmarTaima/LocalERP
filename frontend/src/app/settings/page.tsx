@@ -223,7 +223,7 @@ export default function SettingsPage() {
                     size={84}
                     placeholderIcon={<Typography sx={{ fontSize: 28, fontWeight: 700 }}>{initials}</Typography>}
                   />
-                  <Box>
+                  <Box sx={{ paddingInlineStart: locale === "ar" ? 2 : 0 }}>
                     <Typography variant="h6" sx={{ color: "#0f172a" }}>{user?.name}</Typography>
                     <Typography sx={{ color: "#64748b", fontSize: 13 }}>{user?.email}</Typography>
                     {user?.kind === "company" && (
@@ -350,14 +350,14 @@ export default function SettingsPage() {
                         folder="logos"
                         placeholderIcon={<BusinessOutlinedIcon sx={{ fontSize: 28 }} />}
                       />
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Box sx={{ flex: 1, minWidth: 0, paddingInlineStart: locale === "ar" ? 2 : 0 }}>
                         <Typography variant="h6" sx={{ color: "#0f172a", fontWeight: 700 }} noWrap>{company.name}</Typography>
                         <Typography sx={{ fontSize: 12.5, color: "#94a3b8" }} noWrap>{company.slug}</Typography>
                       </Box>
                       <Chip label={company.plan} size="small" sx={{ bgcolor: planTone.bg, color: planTone.color, fontWeight: 700, textTransform: "capitalize" }} />
                     </Stack>
                     <Divider sx={{ my: 2 }} />
-                    <Stack direction="row" spacing={{ xs: 4, sm: 8 }}>
+                    <Stack direction="row" spacing={{ xs: 4, sm: locale === "ar" ? 14 : 8 }}>
                       <Box>
                         <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94a3b8" }}>{t("users")}</Typography>
                         <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#0f172a", mt: 1 }}>

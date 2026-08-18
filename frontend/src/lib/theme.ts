@@ -55,6 +55,9 @@ export function createAppTheme(direction: "ltr" | "rtl") {
       },
     },
     components: {
+      MuiStack: {
+        defaultProps: { useFlexGap: true },
+      },
       MuiButton: {
         defaultProps: { disableElevation: true },
         styleOverrides: {
@@ -156,9 +159,9 @@ export function createAppTheme(direction: "ltr" | "rtl") {
                 transformOrigin: "top right",
                 "&.MuiInputLabel-outlined": { transform: "translate(-14px, 14px) scale(1)" },
                 "&.MuiInputLabel-outlined.MuiInputLabel-sizeSmall": { transform: "translate(-14px, 7px) scale(1)" },
-                "&.MuiInputLabel-outlined.MuiInputLabel-shrink": { transform: "translate(-14px, -10px) scale(0.75)" },
+                "&.MuiInputLabel-outlined.MuiInputLabel-shrink": { transform: "translate(-14px, -22px) scale(0.75)" },
                 "&.MuiInputLabel-outlined.MuiInputLabel-shrink.MuiInputLabel-sizeSmall": {
-                  transform: "translate(-14px, 3px) scale(0.75)",
+                  transform: "translate(-14px, -9px) scale(0.75)",
                 },
               }
             : {},
