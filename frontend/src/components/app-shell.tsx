@@ -173,7 +173,7 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
         >
           E
         </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ flex: 1, minWidth: 0, paddingInlineStart: direction === "rtl" ? 0.75 : 0 }}>
           <Typography sx={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, color: "#fff", textAlign: "start" }}>{t("brand")}</Typography>
           <Typography sx={{ fontSize: 11, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", textAlign: "start" }}>
             {t("brandSubtitle")}
@@ -237,7 +237,7 @@ export function AppShell({ children, topbar }: { children: ReactNode; topbar?: R
         >
           {(user?.name ?? "U").slice(0, 2).toUpperCase()}
         </Avatar>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ flex: 1, minWidth: 0, paddingInlineStart: direction === "rtl" ? 0.75 : 0 }}>
           <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#fff", textAlign: "start" }} noWrap>{user?.name ?? t("loading")}</Typography>
           <Typography sx={{ fontSize: 11.5, color: "#64748b", textAlign: "start" }} noWrap>{user?.email ?? ""}</Typography>
         </Box>
