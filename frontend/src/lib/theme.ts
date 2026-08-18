@@ -138,6 +138,13 @@ export function createAppTheme(direction: "ltr" | "rtl") {
           root: {
             textAlign: "start",
           },
+          ...(rtl
+            ? {
+                notchedOutline: {
+                  textAlign: "right",
+                },
+              }
+            : {}),
         },
       },
       MuiInputLabel: {
@@ -147,11 +154,11 @@ export function createAppTheme(direction: "ltr" | "rtl") {
                 left: "auto",
                 right: 0,
                 transformOrigin: "top right",
-                "&.MuiInputLabel-outlined": { transform: "translate(-14px, 16px) scale(1)" },
-                "&.MuiInputLabel-outlined.MuiInputLabel-sizeSmall": { transform: "translate(-14px, 9px) scale(1)" },
-                "&.MuiInputLabel-outlined.MuiInputLabel-shrink": { transform: "translate(-14px, -9px) scale(0.75)" },
+                "&.MuiInputLabel-outlined": { transform: "translate(-14px, 14px) scale(1)" },
+                "&.MuiInputLabel-outlined.MuiInputLabel-sizeSmall": { transform: "translate(-14px, 7px) scale(1)" },
+                "&.MuiInputLabel-outlined.MuiInputLabel-shrink": { transform: "translate(-14px, -10px) scale(0.75)" },
                 "&.MuiInputLabel-outlined.MuiInputLabel-shrink.MuiInputLabel-sizeSmall": {
-                  transform: "translate(-14px, 4px) scale(0.75)",
+                  transform: "translate(-14px, 3px) scale(0.75)",
                 },
               }
             : {},

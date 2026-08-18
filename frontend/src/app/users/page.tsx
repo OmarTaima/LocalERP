@@ -185,7 +185,7 @@ export default function UsersPage() {
                   <Avatar src={assetUrl(row.avatarUrl)} sx={{ width: 34, height: 34, bgcolor: "#4f46e5", fontSize: 13, fontWeight: 700 }}>
                     {!row.avatarUrl && row.name.slice(0, 2).toUpperCase()}
                   </Avatar>
-                  <Box>
+                  <Box sx={{ paddingInlineStart: 1 }}>
                     <Typography sx={{ fontWeight: 600, fontSize: 13.5, color: "#0f172a" }}>{row.name}</Typography>
                     <Typography sx={{ fontSize: 12, color: "#94a3b8" }}>{row.email}</Typography>
                   </Box>
