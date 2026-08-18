@@ -140,9 +140,14 @@ export function createAppTheme(direction: "ltr" | "rtl") {
         styleOverrides: {
           root: {
             textAlign: "start",
+            ...(rtl ? { paddingLeft: 14, paddingRight: 14 } : {}),
           },
           ...(rtl
             ? {
+                input: {
+                  "&.MuiInputBase-inputAdornedStart": { paddingLeft: 14, paddingRight: 0 },
+                  "&.MuiInputBase-inputAdornedEnd": { paddingRight: 14, paddingLeft: 0 },
+                },
                 notchedOutline: {
                   textAlign: "right",
                 },
